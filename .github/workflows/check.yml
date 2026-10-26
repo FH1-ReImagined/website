@@ -1,0 +1,18 @@
+# Pull requests: assemble the site as the Pages workflow does and check that every local link
+# and image of the pages is there and the data files parse (tools/check_site.py).
+name: check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/assemble.sh "$RUNNER_TEMP/site"
+      - run: python3 tools/check_site.py "$RUNNER_TEMP/site"

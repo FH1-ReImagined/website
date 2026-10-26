@@ -1,7 +1,9 @@
-# Publishes site/ (the landing page) to GitHub Pages on every push to main that changes it,
-# and once a day with a fresh copy of the public server's leaderboards (data/leaderboards.json).
-# The page uses the project's logo and screenshots from docs/images, copied in here. The
-# leaderboards map (site/images/colorado-map.svg, site/data/map_points.json) is in site/.
+# Publishes this repository (the website, forza.dyotson.dev) to GitHub Pages on every push to
+# main, and once a day with a fresh copy of the public server's leaderboards
+# (data/leaderboards.json). tools/assemble.sh copies the tracked files except the repository's
+# own (.github/, tools/, README.md, LICENSE). The leaderboards map (images/colorado-map.svg,
+# data/map_points.json) is built in the game's repository (tools/build_map_roads.py,
+# tools/extract_map_points.py) and committed here.
 # The server is plain http (a tunnel), which the https site cannot fetch from the browser: the
 # job fetches it and the site serves the copy.
 name: pages
@@ -9,7 +11,6 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "docs/images/**", ".github/workflows/pages.yml"]
   schedule:
     - cron: "23 6 * * *"
   workflow_dispatch:
@@ -32,12 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Assemble the site
-        run: |
-          mkdir _site
-          cp -r site/. _site/
-          mkdir -p _site/images
-          cp docs/images/*.jpg docs/images/logo.svg docs/images/logo.png docs/images/social-preview.png _site/images/
-          touch _site/.nojekyll
+        run: tools/assemble.sh _site
       - name: Copy the public server's leaderboards
         env:
           LEADERBOARDS_URL: http://forza-reimagined.playit.plus:56678/leaderboards/snapshot

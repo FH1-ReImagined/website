@@ -1,7 +1,7 @@
 // The leaderboards page: a map of Colorado with a pin for every speed trap, speed zone and Rivals
 // event, and the board beside it. The map is images/colorado-map.svg (our own drawing of the
-// roads, built by tools/build_map_roads.py from the game's road layout); the pins are data/map_points.json
-// (tools/extract_map_points.py: the in-game names and places). The public server speaks plain
+// roads, built by the game repository's tools/build_map_roads.py from the game's road layout); the pins are data/map_points.json
+// (its tools/extract_map_points.py: the in-game names and places). The public server speaks plain
 // http (a tunnel), which an https page may not fetch, so the site publishes a copy of the
 // server's /leaderboards/snapshot as data/leaderboards.json (see .github/workflows/pages.yml).
 // For testing, ?api=http://host:port reads the server's own /leaderboards/snapshot instead.
