@@ -1,7 +1,7 @@
 # Publishes this repository (the website, forza.dyotson.dev) to GitHub Pages on every push to
 # main, and once a day with a fresh copy of the public server's leaderboards
 # (data/leaderboards.json). tools/assemble.sh copies the tracked files except the repository's
-# own (.github/, tools/, README.md, LICENSE). The leaderboards map (images/colorado-map.svg,
+# own (.github/, tools/, README.md), retaining LICENSE and NOTICE.md. The leaderboards map (images/colorado-map.svg,
 # data/map_points.json) is built in the game's repository (tools/build_map_roads.py,
 # tools/extract_map_points.py) and committed here.
 # The server is plain http (a tunnel), which the https site cannot fetch from the browser: the

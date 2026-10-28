@@ -26,7 +26,8 @@ for f in sorted(root.glob("data/*.json")):
         json.loads(f.read_text(encoding="utf-8"))
     except ValueError as e:
         bad.append(f"{f.relative_to(root)}: {e}")
-for name in ("index.html", "leaderboards.html", "robots.txt", "sitemap.xml", ".nojekyll"):
+for name in ("index.html", "leaderboards.html", "robots.txt", "sitemap.xml", ".nojekyll",
+             "LICENSE", "NOTICE.md"):
     if not (root / name).is_file():
         bad.append(f"missing {name}")
 print("\n".join(bad) or f"ok: {sum(1 for _ in root.rglob('*') if _.is_file())} files")
