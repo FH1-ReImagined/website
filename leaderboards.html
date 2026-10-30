@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
 <title>Leaderboards - Forza Horizon 1: ReImagined</title>
 <meta name="description" content="The public Forza Live server's leaderboards on a map of Colorado: speed traps, speed zones, Rivals and event times, by car class.">
 <link rel="canonical" href="https://forza.dyotson.dev/leaderboards.html">
@@ -23,12 +24,30 @@
 </div>
 
 <header class="topbar">
-  <a class="brand" href="./"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
-  <nav aria-label="Site">
-    <a class="nav-keep" href="gallery.html">Photos</a>
-    <a class="nav-keep" href="leaderboards.html" aria-current="page">Leaderboards</a>
-    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
-    <a class="nav-cta" href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html">Horizon World</a>
+          <a href="leaderboards.html" aria-current="page">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
   </nav>
 </header>
 
@@ -85,6 +104,7 @@
 <footer>
   <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The map is our own drawing: the road layout and the names and places of the events, speed traps, speed zones and landmarks come from the game's files, and nothing else. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
 </footer>
+<script src="nav.js"></script>
 <script src="leaderboards.js"></script>
 </body>
 </html>

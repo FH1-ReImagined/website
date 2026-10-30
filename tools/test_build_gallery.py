@@ -8,7 +8,7 @@ or "owner" anywhere in the output), JPEGs without metadata, the size limits, the
 refuse (a SHA-256 mismatch, other formats, pixel bombs, oversized, broken or animated files,
 images on another host), the cache (a second build downloads nothing; a withdrawn photo leaves
 the site and the cache), the cap, and an unset, unreachable or broken feed. Then, in a headless
-Chrome or Chromium (CHROME=path, else one on PATH or Playwright's): the front page shows the 6
+Chrome or Chromium (CHROME=path, else one on PATH or Playwright's): the front page shows the 3
 newest photos with the players' text as text, gallery.html lists them all, and with an empty
 gallery the front page hides its photos section.
 
@@ -379,7 +379,7 @@ def check_pages(browser, site, order, expect, profile):
         section = next((a for t, a in index.tags if t == "section" and a.get("id") == "photos"), None)
         check(section is not None and "hidden" not in section, "front page: the photos section is shown")
         shown = [a["data-full"] for t, a in index.tags if t == "button" and a.get("data-full", "").startswith("photos/")]
-        check(shown == [f"photos/{i}.jpg" for i in order[:6]], "front page: the 6 newest photos, in order")
+        check(shown == [f"photos/{i}.jpg" for i in order[:3]], "front page: the 3 newest photos, in order")
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in index.tags),
               "front page: the player's markup is not turned into elements")
         check(expect["meta_title"] in index.texts and "<b>Tag</b>" in index.texts, "front page: titles and gamertags inserted as text")

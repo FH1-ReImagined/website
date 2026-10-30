@@ -2,7 +2,7 @@
 // photos: the photos players shared from the game's photo mode and a maintainer approved. The
 // Pages workflow copies them from the Forza Live server (tools/build_gallery.py) into photos/
 // and data/gallery.json, newest first. Every list with data-photos gets them: the front page
-// shows the newest (data-photos="6") and keeps its section hidden while there are none;
+// shows the newest (data-photos="3") and keeps its section hidden while there are none;
 // gallery.html shows them all. Titles and gamertags are the players' own text: they go in with
 // textContent only.
 (function () {

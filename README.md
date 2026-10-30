@@ -1,6 +1,6 @@
 # Forza Horizon 1: ReImagined website
 
-The landing page and the public leaderboards of
+The website and the public leaderboards of
 [Forza Horizon 1: ReImagined](https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined),
 published at **[forza.dyotson.dev](https://forza.dyotson.dev)**.
 
@@ -8,9 +8,13 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 
 | Path | What |
 |------|------|
-| `index.html`, `script.js`, `style.css` | the landing page |
+| `index.html` | the landing page: download, play online, the newest photos |
+| `features.html` | single player, co-op, mods, HD textures, measured frame rates |
+| `online.html` | Horizon World and, soon, player car designs |
+| `download.html` | installing with the launcher |
+| `nav.js`, `script.js`, `style.css` | the navbar, the road along the page and the look |
 | `leaderboards.html`, `leaderboards.js` | the public server's leaderboards on a map of Colorado |
-| `gallery.html`, `photos.js` | the community photos (also the front page's newest six) and the screenshot lightbox |
+| `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the screenshot lightbox |
 | `images/` | screenshots, the logo, the social preview, the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
