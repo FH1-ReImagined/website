@@ -140,8 +140,9 @@ def main():
             json.loads(f.read_text(encoding="utf-8"))
         except ValueError as e:
             bad.append(f"{f.relative_to(root)}: {e}")
-    for name in ("index.html", "leaderboards.html", "gallery.html", "photos.js", "robots.txt",
-                 "sitemap.xml", ".nojekyll", "LICENSE", "NOTICE.md"):
+    for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
+                 "gallery.html", "photos.js", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
+                 "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
             bad.append(f"missing {name}")
     # The front page's photos section starts hidden: photos.js shows it only when there are photos.
@@ -149,6 +150,38 @@ def main():
     m = re.search(r'<section\b[^>]*\bid="photos"[^>]*>', index)
     if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
         bad.append('index.html: <section id="photos"> must start hidden')
+    for token in ("features.html#mountains", "features.html#extras", "features.html#numbers",
+                  "download.html#highway", "download.html#finish", "online.html#online"):
+        if token not in index:
+            bad.append(f"index.html: missing redirect to {token}")
+    sm = (root / "sitemap.xml").read_text(encoding="utf-8") if (root / "sitemap.xml").is_file() else ""
+    for loc in ("https://forza.dyotson.dev/", "https://forza.dyotson.dev/features.html",
+                "https://forza.dyotson.dev/online.html", "https://forza.dyotson.dev/download.html",
+                "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html"):
+        if loc not in sm:
+            bad.append(f"sitemap.xml: missing {loc}")
+    # The same navbar on every page. aria-current="page" is the only difference.
+    navs = {}
+    for page in sorted(root.glob("*.html")):
+        text = page.read_text(encoding="utf-8")
+        if "<title>" not in text or 'name="description"' not in text or 'rel="canonical"' not in text:
+            bad.append(f"{page.name}: needs a title, description and canonical URL")
+        found = re.search(r'<header class="topbar">.*?</header>', text, re.S)
+        if not found:
+            bad.append(f"{page.name}: no navbar")
+            continue
+        nav = re.sub(r'\s*aria-current="page"', "", found.group(0))
+        navs.setdefault(nav, []).append(page.name)
+        if 'aria-current="page"' not in found.group(0):
+            bad.append(f"{page.name}: mark the current page with aria-current")
+    if len(navs) > 1:
+        bad.append("navbar markup differs across pages: " +
+                   "; ".join(", ".join(names) for names in navs.values()))
+    sample = next(iter(navs), "")
+    if sample and not re.search(r'<button\b[^>]*class="nav-toggle"[^>]*aria-controls="site-nav"', sample):
+        bad.append("navbar: menu button must be a button that controls the nav")
+    if sample and 'aria-expanded="false"' not in sample:
+        bad.append("navbar: menu button needs aria-expanded")
     if (root / "data" / "gallery.json").is_file():
         bad += check_gallery(root)
     print("\n".join(bad) or f"ok: {sum(1 for _ in root.rglob('*') if _.is_file())} files")

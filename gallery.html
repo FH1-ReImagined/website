@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
 <title>Community photos - Forza Horizon 1: ReImagined</title>
 <meta name="description" content="Photos players took in the photo mode of Forza Horizon 1: ReImagined and shared, newest first. Every photo is reviewed before it appears.">
 <link rel="canonical" href="https://forza.dyotson.dev/gallery.html">
@@ -26,12 +27,30 @@
 </div>
 
 <header class="topbar">
-  <a class="brand" href="./"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
-  <nav aria-label="Site">
-    <a class="nav-keep" href="gallery.html" aria-current="page">Photos</a>
-    <a class="nav-keep" href="leaderboards.html">Leaderboards</a>
-    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
-    <a class="nav-cta" href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html">Horizon World</a>
+          <a href="leaderboards.html">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html" aria-current="page">Photos</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
   </nav>
 </header>
 
@@ -62,6 +81,7 @@
 </footer>
 
 <dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>
+<script src="nav.js"></script>
 <script src="photos.js"></script>
 </body>
 </html>

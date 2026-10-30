@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
+<title>Play online - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="Play Forza Horizon 1: ReImagined online: the public Horizon World, a server you host, or this PC. Leaderboards, the Discord, and player car designs soon.">
+<link rel="canonical" href="https://forza.dyotson.dev/online.html">
+<meta name="theme-color" content="#140d2e">
+<meta property="og:title" content="Play online - Forza Horizon 1: ReImagined">
+<meta property="og:description" content="Horizon World on the public server, a server you host, or this PC. Leaderboards, the Discord, and player car designs soon.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://forza.dyotson.dev/online.html">
+<meta property="og:image" content="https://forza.dyotson.dev/images/social-preview.png">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#online">Skip to content</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars"></div>
+  <svg class="sun" viewBox="0 0 160 160" width="160" height="160">
+    <defs>
+      <linearGradient id="sunfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a0"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient>
+      <mask id="sunbars"><rect width="160" height="160" fill="#fff"/><rect y="86" width="160" height="4" fill="#000"/><rect y="104" width="160" height="6" fill="#000"/><rect y="124" width="160" height="8" fill="#000"/></mask>
+    </defs>
+    <circle cx="80" cy="80" r="76" fill="url(#sunfill)" mask="url(#sunbars)"/>
+  </svg>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<svg class="road" aria-hidden="true" focusable="false">
+  <path class="road-edge" d=""/>
+  <path class="road-asphalt" d=""/>
+  <path class="road-line" d=""/>
+  <path class="road-driven" d=""/>
+</svg>
+<svg class="car" aria-hidden="true" focusable="false" viewBox="0 0 24 44" width="24" height="44">
+  <rect x="2" y="2" width="20" height="40" rx="8" fill="#ff5470"/>
+  <rect x="5" y="12" width="14" height="9" rx="3" fill="#ffe9c0"/>
+  <rect x="5" y="28" width="14" height="6" rx="2" fill="#ffe9c0" opacity=".8"/>
+  <rect x="4" y="3" width="4" height="3" rx="1.5" fill="#fff4c2"/><rect x="16" y="3" width="4" height="3" rx="1.5" fill="#fff4c2"/>
+</svg>
+
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html" aria-current="page">Horizon World</a>
+          <a href="leaderboards.html">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section id="online" class="stop right">
+    <div class="panel">
+      <p class="kicker">Mile 48 &middot; Playing online</p>
+      <h1 class="plain">Horizon World</h1>
+      <p class="aside">In Settings, under Online, choose one. Then Multiplayer, Find Game.</p>
+      <dl class="modes">
+        <dt>Public server</dt><dd>Horizon World, <a href="leaderboards.html">leaderboards</a> and rivals. Nothing to set up.</dd>
+        <dt>My own server</dt><dd>You or a friend host it. <a href="https://github.com/FH1-ReImagined/forza-live/blob/main/docs/hosting.md">Hosting guide</a></dd>
+        <dt>This PC</dt><dd>A private server, just you.</dd>
+        <dt>Offline</dt><dd>No server.</dd>
+      </dl>
+      <p class="chips"><a href="leaderboards.html">Leaderboards</a><a href="https://discord.gg/yu7zScdcWw">Discord</a></p>
+    </div>
+  </section>
+
+  <section id="designs" class="stop left">
+    <div class="panel">
+      <p class="kicker">Coming soon</p>
+      <h2>Player designs</h2>
+      <p class="aside">Car designs shared by players. Coming soon.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. Forza, Forza Horizon, Xbox and Xbox LIVE are trademarks of Microsoft. It contains no game code or assets; you must own the game. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+  <p>Made with the <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue SDK</a>. Community: <a href="https://discord.gg/yu7zScdcWw">Discord</a>.</p>
+</footer>
+
+<script src="nav.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
