@@ -1,5 +1,6 @@
 // The road follows the sections: it is drawn from the layout, the car drives it as you scroll,
-// and the sky goes from sunset to night.
+// and the sky goes from sunset to night. A hidden section (#photos with no photos) is skipped;
+// photos.js fires "photos:shown" when it shows one, and the road is laid out again.
 (function () {
   "use strict";
   var doc = document.documentElement;
@@ -45,7 +46,7 @@
     svg.style.height = h + "px";
     var pts = [{ x: narrow ? 24 : w * 0.5, y: 0 }];
     ys = [];
-    stops.forEach(function (s, i) {
+    stops.filter(function (s) { return !s.hidden; }).forEach(function (s, i) {
       var top = s.offsetTop, mid = top + s.offsetHeight * 0.5;
       var x;
       if (narrow) x = 22 + (i % 2) * 6;
@@ -97,20 +98,7 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", build);
   window.addEventListener("load", build);
+  document.addEventListener("photos:shown", build);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
   build();
-
-  // Screenshot lightbox.
-  var box = document.getElementById("lightbox");
-  if (box && box.showModal) {
-    document.querySelectorAll(".shots button, .cards button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        box.querySelector("img").src = b.dataset.full;
-        box.querySelector("img").alt = b.querySelector("img").alt;
-        box.querySelector("p").textContent = b.dataset.cap || "";
-        box.showModal();
-      });
-    });
-    box.addEventListener("click", function (e) { if (e.target === box) box.close(); });
-  }
 })();

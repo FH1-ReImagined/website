@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community photos - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="Photos players took in the photo mode of Forza Horizon 1: ReImagined and shared, newest first. Every photo is reviewed before it appears.">
+<link rel="canonical" href="https://forza.dyotson.dev/gallery.html">
+<meta name="theme-color" content="#140d2e">
+<meta property="og:title" content="Community photos - Forza Horizon 1: ReImagined">
+<meta property="og:description" content="Photos players took in the game's photo mode and shared, newest first.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://forza.dyotson.dev/gallery.html">
+<meta property="og:image" content="https://forza.dyotson.dev/images/social-preview.png">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#photos">Skip to the photos</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars" style="--stars:.7"></div>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="./"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <nav aria-label="Site">
+    <a class="nav-keep" href="gallery.html" aria-current="page">Photos</a>
+    <a class="nav-keep" href="leaderboards.html">Leaderboards</a>
+    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
+    <a class="nav-cta" href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+  </nav>
+</header>
+
+<main class="board-page gallery-page">
+  <div class="page-head">
+    <p class="kicker">Community &middot; Photo mode</p>
+    <h1><span class="h1-big">Photos</span></h1>
+    <p class="aside">Shots players took in the game's photo mode, newest first. Share yours from photo mode in the game.</p>
+  </div>
+
+  <ul class="shots photos all" id="photos" data-photos="all" aria-label="Community photos"></ul>
+  <p class="photo-state" data-photos-state="No photos yet. Share yours from photo mode in the game.">Loading the photos...</p>
+  <noscript><p class="photo-state error">The photos need JavaScript.</p></noscript>
+
+  <section class="panel rules" aria-labelledby="rules">
+    <h2 id="rules">Rules</h2>
+    <ul>
+      <li><b>Only your own photos</b>, taken in the game.</li>
+      <li><b>Nothing offensive</b>: no offensive text, plates or liveries, and no personal details in titles.</li>
+      <li><b>Every photo is reviewed</b> by a maintainer before it appears here, and the page is refreshed about once an hour.</li>
+      <li><b>To have a photo removed</b>, yours or one that breaks these rules, <a href="https://github.com/FH1-ReImagined/website/issues/new?template=photo-removal.yml">open an issue on the website's repository</a> or ask on the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. Say which photo: its title and gamertag, or its address (open it and copy the image address).</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>The photos were taken and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+</footer>
+
+<dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>
+<script src="photos.js"></script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 # Pull requests: assemble the site as the Pages workflow does and check that every local link
-# and image of the pages is there and the data files parse (tools/check_site.py).
+# and image of the pages is there and the data files parse (tools/check_site.py), then test the
+# community photos build on a fixture feed of synthetic images, with the pages in headless
+# Chrome (tools/test_build_gallery.py).
 name: check
 
 on:
@@ -16,3 +18,10 @@ jobs:
       - uses: actions/checkout@v4
       - run: tools/assemble.sh "$RUNNER_TEMP/site"
       - run: python3 tools/check_site.py "$RUNNER_TEMP/site"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - run: python -m pip install -r tools/requirements.txt
+      - run: python tools/test_build_gallery.py

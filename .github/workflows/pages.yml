@@ -1,18 +1,23 @@
 # Publishes this repository (the website, forza.dyotson.dev) to GitHub Pages on every push to
-# main, and once a day with a fresh copy of the public server's leaderboards
-# (data/leaderboards.json). tools/assemble.sh copies the tracked files except the repository's
+# main, and every hour with a fresh copy of the public server's leaderboards
+# (data/leaderboards.json) and community photos (data/gallery.json, photos/). tools/assemble.sh copies the tracked files except the repository's
 # own (.github/, tools/, README.md), retaining LICENSE and NOTICE.md. The leaderboards map (images/colorado-map.svg,
 # data/map_points.json) is built in the game's repository (tools/build_map_roads.py,
 # tools/extract_map_points.py) and committed here.
 # The server is plain http (a tunnel), which the https site cannot fetch from the browser: the
 # job fetches it and the site serves the copy.
+# The community photos come from the feed in the repository variable GALLERY_FEED_URL (the
+# server's /community/gallery.json; unset: no photos, the front page hides its section).
+# tools/build_gallery.py re-encodes every photo without metadata; actions/cache keeps the
+# re-encoded copies between runs so the server sends each photo once. A scheduled run that
+# cannot read the feed fails, like the leaderboards copy, and the published site stays as it was.
 name: pages
 
 on:
   push:
     branches: [main]
   schedule:
-    - cron: "23 6 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -48,6 +53,33 @@ jobs:
             if [ "$GITHUB_EVENT_NAME" = schedule ]; then echo "server unreachable"; exit 1; fi
             echo "::warning::the leaderboards could not be copied; the page shows an error"
           fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - run: python -m pip install -r tools/requirements.txt
+      - name: Restore the community photos cache
+        id: photo-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .gallery-cache
+          key: gallery-run-${{ github.run_id }}
+          restore-keys: gallery-
+      - name: Copy the community photos
+        id: gallery
+        env:
+          GALLERY_FEED_URL: ${{ vars.GALLERY_FEED_URL }}
+          REQUIRE_FEED: ${{ github.event_name == 'schedule' && '--require-feed' || '' }}
+        run: python tools/build_gallery.py _site --cache .gallery-cache $REQUIRE_FEED
+      - name: Save the community photos cache
+        if: steps.gallery.outputs.cache-key != '' && steps.photo-cache.outputs.cache-matched-key != format('gallery-{0}', steps.gallery.outputs.cache-key)
+        uses: actions/cache/save@v4
+        with:
+          path: .gallery-cache
+          key: gallery-${{ steps.gallery.outputs.cache-key }}
+      - name: Check the site
+        run: python tools/check_site.py _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
