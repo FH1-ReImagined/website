@@ -1,0 +1,31 @@
+name: Remove a community photo
+description: Ask for a photo of the community gallery (forza.dyotson.dev/gallery.html) to be taken down.
+title: "Remove a community photo"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask here for a photo of the [community gallery](https://forza.dyotson.dev/gallery.html) to be taken down: one of yours, or one that breaks the rules. This issue is public, so leave personal details out. You can also ask on the [Discord](https://discord.gg/yu7zScdcWw).
+  - type: input
+    id: photo
+    attributes:
+      label: Which photo
+      description: Its title and gamertag, or its address (open it in the gallery and copy the image address).
+    validations:
+      required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Why
+      options:
+        - It is my photo and I want it removed
+        - It is not the sharer's own photo
+        - Offensive text, plate or livery
+        - Personal details in the title
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else

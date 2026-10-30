@@ -49,6 +49,7 @@
 <header class="topbar">
   <a class="brand" href="#festival"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
   <nav aria-label="Site">
+    <a class="nav-keep" href="gallery.html">Photos</a>
     <a class="nav-keep" href="leaderboards.html">Leaderboards</a>
     <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
     <a class="nav-cta" href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
@@ -75,6 +76,18 @@
       <p class="notice"><strong>No game code or data is included.</strong> The launcher builds the game on your PC from your own copy.</p>
       <p class="scroll-hint"><span>Scroll down to continue the journey</span><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M5 8l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></p>
     </div>
+  </section>
+
+  <section id="photos" class="stop right" data-photos-section hidden>
+    <div class="panel">
+      <p class="kicker">Mile 6 &middot; Photo mode</p>
+      <h2>Community photos</h2>
+      <p class="aside">The newest shots from players, reviewed before they appear. Share yours from photo mode in the game.</p>
+      <div class="cta">
+        <a class="btn ghost" href="gallery.html"><span>See all photos</span><small>The community gallery</small></a>
+      </div>
+    </div>
+    <ul class="shots photos" data-photos="6" aria-label="The newest community photos"></ul>
   </section>
 
   <section id="mountains" class="stop right">
@@ -210,5 +223,6 @@
 
 <dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>
 <script src="script.js"></script>
+<script src="photos.js"></script>
 </body>
 </html>
