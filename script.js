@@ -1,6 +1,7 @@
 // The road follows the sections: it is drawn from the layout, the car drives it as you scroll,
-// and the sky goes from sunset to night. A hidden section (#photos with no photos) is skipped;
-// photos.js fires "photos:shown" when it shows one, and the road is laid out again.
+// and the sky goes from sunset to night. A hidden section (#photos with no photos, #designs with
+// no designs) is skipped; photos.js and designs.js fire "photos:shown" and "designs:shown" when
+// they show one, and the road is laid out again.
 (function () {
   "use strict";
   var doc = document.documentElement;
@@ -99,6 +100,7 @@
   window.addEventListener("resize", build);
   window.addEventListener("load", build);
   document.addEventListener("photos:shown", build);
+  document.addEventListener("designs:shown", build);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
   build();
 })();

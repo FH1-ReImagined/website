@@ -3,16 +3,26 @@
 file that is there, and the JSON data files parse. When the community photos were built into it
 (tools/build_gallery.py), also data/gallery.json: only the fields the pages show (never a "xuid"
 or an "owner"), every listed photo there and no unlisted one, sizes within the limits, and JPEGs
-without metadata (no APP1-APP15 or COM segment, nothing after the end).
+without metadata (no APP1-APP15 or COM segment, nothing after the end). When the community
+designs were (tools/build_designs.py), data/designs.json the same way: only the fields the pages
+show, every listed preview there and no unlisted one, and PNGs of pixels alone (IHDR, PLTE,
+tRNS, IDAT and IEND chunks, nothing after the end).
   tools/check_site.py OUT"""
 import json
 import re
 import sys
+import zlib
 from pathlib import Path
 from urllib.parse import urlsplit
 
 GALLERY_KEYS = {"id", "title", "gamertag", "car", "location", "src", "w", "h", "thumb", "tw", "th"}
 FULL_WIDTH, THUMB_WIDTH, MAX_SIDE = 1920, 480, 7680
+DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "car", "downloads", "rating", "ratings", "createdAt",
+               "src", "w", "h"}
+PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
+MAX_TIME = 10 ** 11  # unix seconds
+PNG_SIG = b"\x89PNG\r\n\x1a\n"
+PNG_PIXEL_CHUNKS = {b"IHDR", b"PLTE", b"tRNS", b"IDAT", b"IEND"}
 SOF = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
 
 
@@ -79,6 +89,10 @@ def is_size(v, limit):
     return isinstance(v, int) and not isinstance(v, bool) and 0 < v <= limit
 
 
+def is_count(v, limit=10 ** 9):
+    return isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= limit
+
+
 def check_gallery(root):
     path = root / "data" / "gallery.json"
     text = path.read_text(encoding="utf-8")
@@ -121,6 +135,96 @@ def check_gallery(root):
     return bad
 
 
+def png_chunks(data):
+    """(width, height, chunk types in order) of a PNG; ValueError if it is not a well-formed PNG
+    (every chunk's CRC right) that ends at its IEND."""
+    if not data.startswith(PNG_SIG):
+        raise ValueError("not a PNG")
+    i, types = len(PNG_SIG), []
+    while True:
+        if i + 12 > len(data):
+            raise ValueError("no IEND")
+        n, kind = int.from_bytes(data[i:i + 4], "big"), data[i + 4:i + 8]
+        end = i + 12 + n
+        if end > len(data) or zlib.crc32(data[i + 4:end - 4]) != int.from_bytes(data[end - 4:end], "big"):
+            raise ValueError(f"bad chunk {kind.decode('latin-1')!r}")
+        if not types and (kind != b"IHDR" or n != 13):
+            raise ValueError("no IHDR")
+        types.append(kind)
+        i = end
+        if kind == b"IEND":
+            if i != len(data):
+                raise ValueError(f"{len(data) - i} bytes after the end")
+            break
+    w, h = int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    return w, h, types
+
+
+def check_png(path, width, height):
+    try:
+        w, h, types = png_chunks(path.read_bytes())
+    except ValueError as e:
+        return [f"{path.name}: {e}"]
+    bad = []
+    extra = sorted({t.decode("latin-1") for t in types} - {t.decode() for t in PNG_PIXEL_CHUNKS})
+    if extra:
+        bad.append(f"{path.name}: chunks other than pixels: {', '.join(extra)}")
+    if (w, h) != (width, height):
+        bad.append(f"{path.name}: {w}x{h}, data/designs.json says {width}x{height}")
+    return bad
+
+
+def check_designs(root):
+    path = root / "data" / "designs.json"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        return []  # reported with the other data files
+    if not (isinstance(doc, dict) and doc.get("version") == 1 and isinstance(doc.get("designs"), list)):
+        return ["data/designs.json: not a version 1 list of designs"]
+    bad = []
+    if set(doc) - {"version", "generated", "designs"}:
+        bad.append(f"data/designs.json: unexpected fields {sorted(set(doc) - {'version', 'generated', 'designs'})}")
+    listed, codes = set(), set()
+    for i, d in enumerate(doc["designs"]):
+        where = f"data/designs.json design {i}"
+        if not isinstance(d, dict) or not re.fullmatch(r"[A-Za-z0-9]{6,32}", str(d.get("id"))):
+            bad.append(f"{where}: no id")
+            continue
+        did = d["id"]
+        if set(d) - DESIGN_KEYS:  # never an owner, a XUID, the design itself or its description
+            bad.append(f"{where}: unexpected fields {sorted(set(d) - DESIGN_KEYS)}")
+        if d.get("type") not in ("livery", "vinylgroup"):
+            bad.append(f"{where}: bad type")
+        if not re.fullmatch(r"[A-Za-z0-9]{4,15}", str(d.get("code"))) or str(d.get("code")).upper() in codes:
+            bad.append(f"{where}: bad or repeated share code")
+        codes.add(str(d.get("code")).upper())
+        if not (isinstance(d.get("gamertag"), str) and d["gamertag"] and isinstance(d.get("title"), str)):
+            bad.append(f"{where}: no gamertag or title")
+        if "car" in d and not (d.get("type") == "livery" and isinstance(d["car"], str) and d["car"]):
+            bad.append(f"{where}: a car only for a paint job")
+        if not (is_count(d.get("downloads")) and is_count(d.get("ratings")) and is_count(d.get("createdAt"), MAX_TIME)):
+            bad.append(f"{where}: bad counts or createdAt")
+        r = d.get("rating")
+        if isinstance(r, bool) or not isinstance(r, (int, float)) or not 0 <= r <= 5:
+            bad.append(f"{where}: bad rating")
+        if d.get("src") != f"designs/{did}.png":
+            bad.append(f"{where}: src is not designs/{did}.png")
+            continue
+        if not (is_size(d.get("w"), PREVIEW_WIDTH) and is_size(d.get("h"), PREVIEW_MAX_SIDE)):
+            bad.append(f"{where}: sizes out of range")
+            continue
+        listed.add(d["src"])
+        if not (root / d["src"]).is_file():
+            bad.append(f"{where}: missing {d['src']}")
+        else:
+            bad += check_png(root / d["src"], d["w"], d["h"])
+    if (root / "designs").is_dir():
+        bad += [f"designs/{f.name}: not in data/designs.json"
+                for f in sorted((root / "designs").iterdir()) if f"designs/{f.name}" not in listed]
+    return bad
+
+
 def main():
     root = Path(sys.argv[1])
     bad = []
@@ -141,7 +245,7 @@ def main():
         except ValueError as e:
             bad.append(f"{f.relative_to(root)}: {e}")
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
-                 "gallery.html", "photos.js", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
+                 "gallery.html", "photos.js", "designs.html", "designs.js", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
             bad.append(f"missing {name}")
@@ -150,6 +254,11 @@ def main():
     m = re.search(r'<section\b[^>]*\bid="photos"[^>]*>', index)
     if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
         bad.append('index.html: <section id="photos"> must start hidden')
+    # The same for the Online page's #designs: designs.js shows it only when there are designs.
+    online = (root / "online.html").read_text(encoding="utf-8") if (root / "online.html").is_file() else ""
+    m = re.search(r'<section\b[^>]*\bid="designs"[^>]*>', online)
+    if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
+        bad.append('online.html: <section id="designs"> must start hidden')
     for token in ("features.html#mountains", "features.html#extras", "features.html#numbers",
                   "download.html#highway", "download.html#finish", "online.html#online"):
         if token not in index:
@@ -157,7 +266,8 @@ def main():
     sm = (root / "sitemap.xml").read_text(encoding="utf-8") if (root / "sitemap.xml").is_file() else ""
     for loc in ("https://forza.dyotson.dev/", "https://forza.dyotson.dev/features.html",
                 "https://forza.dyotson.dev/online.html", "https://forza.dyotson.dev/download.html",
-                "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html"):
+                "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html",
+                "https://forza.dyotson.dev/designs.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
     # The same navbar on every page. aria-current="page" is the only difference.
@@ -184,6 +294,8 @@ def main():
         bad.append("navbar: menu button needs aria-expanded")
     if (root / "data" / "gallery.json").is_file():
         bad += check_gallery(root)
+    if (root / "data" / "designs.json").is_file():
+        bad += check_designs(root)
     print("\n".join(bad) or f"ok: {sum(1 for _ in root.rglob('*') if _.is_file())} files")
     return 1 if bad else 0
 

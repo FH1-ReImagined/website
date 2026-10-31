@@ -1,6 +1,7 @@
 # Publishes this repository (the website, forza.dyotson.dev) to GitHub Pages on every push to
 # main, and every hour with a fresh copy of the public server's leaderboards
-# (data/leaderboards.json) and community photos (data/gallery.json, photos/). tools/assemble.sh copies the tracked files except the repository's
+# (data/leaderboards.json), community photos (data/gallery.json, photos/) and community designs
+# (data/designs.json, designs/). tools/assemble.sh copies the tracked files except the repository's
 # own (.github/, tools/, README.md), retaining LICENSE and NOTICE.md. The leaderboards map (images/colorado-map.svg,
 # data/map_points.json) is built in the game's repository (tools/build_map_roads.py,
 # tools/extract_map_points.py) and committed here.
@@ -11,6 +12,9 @@
 # tools/build_gallery.py re-encodes every photo without metadata; actions/cache keeps the
 # re-encoded copies between runs so the server sends each photo once. A scheduled run that
 # cannot read the feed fails, like the leaderboards copy, and the published site stays as it was.
+# The paint jobs and vinyl groups players share come from the same server's
+# /community/designs.json (tools/build_designs.py, the same checks and a cache of its own); a
+# server without that feed gives no designs, and online.html hides its designs section.
 name: pages
 
 on:
@@ -78,6 +82,25 @@ jobs:
         with:
           path: .gallery-cache
           key: gallery-${{ steps.gallery.outputs.cache-key }}
+      - name: Restore the community designs cache
+        id: design-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .designs-cache
+          key: designs-run-${{ github.run_id }}
+          restore-keys: designs-
+      - name: Copy the community designs
+        id: designs
+        env:
+          GALLERY_FEED_URL: ${{ vars.GALLERY_FEED_URL }}
+          REQUIRE_FEED: ${{ github.event_name == 'schedule' && '--require-feed' || '' }}
+        run: python tools/build_designs.py _site --cache .designs-cache $REQUIRE_FEED
+      - name: Save the community designs cache
+        if: steps.designs.outputs.cache-key != '' && steps.design-cache.outputs.cache-matched-key != format('designs-{0}', steps.designs.outputs.cache-key)
+        uses: actions/cache/save@v4
+        with:
+          path: .designs-cache
+          key: designs-${{ steps.designs.outputs.cache-key }}
       - name: Check the site
         run: python tools/check_site.py _site
       - uses: actions/configure-pages@v5
