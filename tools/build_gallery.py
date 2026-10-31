@@ -67,6 +67,13 @@ SHA_RE = re.compile(r"[0-9a-fA-F]{64}")
 
 class Refused(Exception):
     """The photo failed a check: leave it out."""
+    status = None  # the HTTP status, when the server answered 4xx
+
+
+def _refused_status(code):
+    err = Refused(f"HTTP {code}")
+    err.status = code
+    return err
 
 
 class Unreachable(Exception):
@@ -106,7 +113,7 @@ def fetch(url, limit, tries):
             return data
         except urllib.error.HTTPError as e:
             if e.code < 500:
-                raise Refused(f"HTTP {e.code}") from None
+                raise _refused_status(e.code) from None
             err = Unreachable(f"HTTP {e.code}")
         except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
             err = Unreachable(str(getattr(e, "reason", e)) or type(e).__name__)

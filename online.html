@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>document.documentElement.classList.add("js")</script>
 <title>Play online - Forza Horizon 1: ReImagined</title>
-<meta name="description" content="Play Forza Horizon 1: ReImagined online: the public Horizon World, a server you host, or this PC. Leaderboards, the Discord, and player car designs soon.">
+<meta name="description" content="Play Forza Horizon 1: ReImagined online: the public Horizon World, a server you host, or this PC. Leaderboards, the Discord, and the paint jobs and vinyl groups players share.">
 <link rel="canonical" href="https://forza.dyotson.dev/online.html">
 <meta name="theme-color" content="#140d2e">
 <meta property="og:title" content="Play online - Forza Horizon 1: ReImagined">
-<meta property="og:description" content="Horizon World on the public server, a server you host, or this PC. Leaderboards, the Discord, and player car designs soon.">
+<meta property="og:description" content="Horizon World on the public server, a server you host, or this PC. Leaderboards, the Discord, and the designs players share.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://forza.dyotson.dev/online.html">
 <meta property="og:image" content="https://forza.dyotson.dev/images/social-preview.png">
@@ -65,6 +65,7 @@
       <div class="menu-panel" id="nav-community">
         <div class="menu-list">
           <a href="gallery.html">Photos</a>
+          <a href="designs.html">Designs</a>
           <a href="https://discord.gg/yu7zScdcWw">Discord</a>
         </div>
       </div>
@@ -86,16 +87,20 @@
         <dt>This PC</dt><dd>A private server, just you.</dd>
         <dt>Offline</dt><dd>No server.</dd>
       </dl>
-      <p class="chips"><a href="leaderboards.html">Leaderboards</a><a href="https://discord.gg/yu7zScdcWw">Discord</a></p>
+      <p class="chips"><a href="leaderboards.html">Leaderboards</a><a href="designs.html">Player designs</a><a href="https://discord.gg/yu7zScdcWw">Discord</a></p>
     </div>
   </section>
 
-  <section id="designs" class="stop left">
+  <section id="designs" class="stop left" data-designs-section hidden>
     <div class="panel">
-      <p class="kicker">Coming soon</p>
+      <p class="kicker">Mile 52 &middot; The storefront</p>
       <h2>Player designs</h2>
-      <p class="aside">Car designs shared by players. Coming soon.</p>
+      <p class="aside">Paint jobs and vinyl groups players shared from the storefront. Search for a share code in the storefront to get one, free.</p>
+      <div class="cta">
+        <a class="btn ghost" href="designs.html"><span>See all designs</span><small>Paint jobs and vinyl groups</small></a>
+      </div>
     </div>
+    <ul class="designs" data-designs="3" aria-label="The newest designs"></ul>
   </section>
 </main>
 
@@ -106,5 +111,6 @@
 
 <script src="nav.js"></script>
 <script src="script.js"></script>
+<script src="designs.js"></script>
 </body>
 </html>

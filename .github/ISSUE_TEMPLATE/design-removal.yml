@@ -1,0 +1,31 @@
+name: Remove a player design
+description: Ask for a paint job or vinyl group on the designs page (forza.dyotson.dev/designs.html) to be taken down.
+title: "Remove a player design"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask here for a paint job or vinyl group on the [designs page](https://forza.dyotson.dev/designs.html) to be taken down: one that breaks the rules, or one of yours you cannot remove in the game. To remove your own design, choose REMOVE in MY SHARED DESIGNS in the game. This issue is public, so leave personal details out. You can also ask on the [Discord](https://discord.gg/yu7zScdcWw).
+  - type: input
+    id: design
+    attributes:
+      label: Which design
+      description: Its share code (on its card), or its title and gamertag.
+    validations:
+      required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Why
+      options:
+        - It is my design and I want it removed
+        - It copies someone else's design
+        - Offensive text, logo or image
+        - Personal details in the title
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else

@@ -1,7 +1,7 @@
 # Pull requests: assemble the site as the Pages workflow does and check that every local link
 # and image of the pages is there and the data files parse (tools/check_site.py), then test the
-# community photos build on a fixture feed of synthetic images, with the pages in headless
-# Chrome (tools/test_build_gallery.py).
+# community photos and designs builds on fixture feeds of synthetic images, with the pages in
+# headless Chrome (tools/test_build_gallery.py, tools/test_build_designs.py).
 name: check
 
 on:
@@ -25,3 +25,4 @@ jobs:
           cache-dependency-path: tools/requirements.txt
       - run: python -m pip install -r tools/requirements.txt
       - run: python tools/test_build_gallery.py
+      - run: python tools/test_build_designs.py

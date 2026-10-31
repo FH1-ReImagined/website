@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
+<title>Player designs - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="Paint jobs and vinyl groups players shared from the storefront of Forza Horizon 1: ReImagined, each with a share code that finds it in the game. Free to download.">
+<link rel="canonical" href="https://forza.dyotson.dev/designs.html">
+<meta name="theme-color" content="#140d2e">
+<meta property="og:title" content="Player designs - Forza Horizon 1: ReImagined">
+<meta property="og:description" content="Paint jobs and vinyl groups players shared from the game's storefront, with the share code that finds each one in the game.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://forza.dyotson.dev/designs.html">
+<meta property="og:image" content="https://forza.dyotson.dev/images/social-preview.png">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#designs-main">Skip to the designs</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars" style="--stars:.7"></div>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html">Horizon World</a>
+          <a href="leaderboards.html">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="designs.html" aria-current="page">Designs</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+  </nav>
+</header>
+
+<main class="board-page designs-page" id="designs-main">
+  <div class="page-head">
+    <p class="kicker">Community &middot; Storefront</p>
+    <h1><span class="h1-big">Designs</span></h1>
+    <p class="aside">Paint jobs and vinyl groups players shared from the game's storefront, newest first. Each has a share code: search for it in the storefront and the design is yours, free.</p>
+  </div>
+
+  <div class="design-bar">
+    <div class="tabs" role="tablist" aria-label="Kind of design">
+      <button type="button" role="tab" id="tab-paint-jobs" aria-controls="paint-jobs" aria-selected="true">Paint jobs <span class="n" data-designs-count="livery"></span></button>
+      <button type="button" role="tab" id="tab-vinyl-groups" aria-controls="vinyl-groups" aria-selected="false">Vinyl groups <span class="n" data-designs-count="vinylgroup"></span></button>
+    </div>
+    <div class="board-controls design-controls">
+      <label>Car or creator
+        <input type="search" id="design-filter" placeholder="A car or a gamertag" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Sort by
+        <select id="design-sort">
+          <option value="newest">Newest</option>
+          <option value="downloads">Most downloaded</option>
+          <option value="rating">Top rated</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <section class="design-panel" id="paint-jobs" role="tabpanel" aria-labelledby="tab-paint-jobs">
+    <aside class="panel howto" aria-labelledby="howto-paint-jobs">
+      <h2 id="howto-paint-jobs">How to get it in the game</h2>
+      <ol class="steps">
+        <li>Open the <b>Storefront</b> and choose <b>Search</b>.</li>
+        <li>Put the share code in the <b>gamertag</b> field and search.</li>
+        <li>Pick the paint job and <b>Buy</b> it. It is free.</li>
+        <li>Apply it to your car. A paint job fits the car it was made for.</li>
+      </ol>
+    </aside>
+    <ul class="designs all" data-designs="all" data-designs-type="livery" aria-label="Paint jobs"></ul>
+    <p class="design-state" data-designs-state="No paint jobs yet. Share yours from the storefront in the game." data-designs-none="No paint jobs match the filter.">Loading the designs...</p>
+  </section>
+
+  <section class="design-panel" id="vinyl-groups" role="tabpanel" aria-labelledby="tab-vinyl-groups">
+    <aside class="panel howto" aria-labelledby="howto-vinyl-groups">
+      <h2 id="howto-vinyl-groups">How to get it in the game</h2>
+      <ol class="steps">
+        <li>Open the <b>Storefront</b> and choose <b>Search</b>.</li>
+        <li>Put the share code in the <b>text</b> field and search.</li>
+        <li>Pick the vinyl group and <b>Buy</b> it. It is free.</li>
+        <li>Apply it to your car's livery.</li>
+      </ol>
+    </aside>
+    <ul class="designs all" data-designs="all" data-designs-type="vinylgroup" aria-label="Vinyl groups"></ul>
+    <p class="design-state" data-designs-state="No vinyl groups yet. Share yours from the storefront in the game." data-designs-none="No vinyl groups match the filter.">Loading the designs...</p>
+  </section>
+  <noscript><p class="design-state error">The designs need JavaScript.</p></noscript>
+
+  <section class="panel rules" aria-labelledby="rules">
+    <h2 id="rules">Rules</h2>
+    <ul>
+      <li><b>Only your own designs</b>, made in the game.</li>
+      <li><b>Nothing offensive</b>: no offensive text, logos or images, and no personal details in titles.</li>
+      <li><b>Shared designs are screened</b> before they appear here. In the game, anyone can report a design: a design reported by three players is hidden until a maintainer checks it. The page refreshes every few minutes.</li>
+      <li><b>To remove one of your designs</b>, choose REMOVE in MY SHARED DESIGNS in the game. <b>To have a design removed</b> that breaks these rules, <a href="https://github.com/FH1-ReImagined/website/issues/new?template=design-removal.yml">open an issue on the website's repository</a> or ask on the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. Say which design: its share code.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>The designs were made and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+</footer>
+
+<script src="nav.js"></script>
+<script src="designs.js"></script>
+</body>
+</html>
