@@ -245,7 +245,7 @@ def main():
         except ValueError as e:
             bad.append(f"{f.relative_to(root)}: {e}")
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
-                 "gallery.html", "photos.js", "designs.html", "designs.js", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
+                 "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
             bad.append(f"missing {name}")
@@ -267,7 +267,7 @@ def main():
     for loc in ("https://forza.dyotson.dev/", "https://forza.dyotson.dev/features.html",
                 "https://forza.dyotson.dev/online.html", "https://forza.dyotson.dev/download.html",
                 "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html",
-                "https://forza.dyotson.dev/designs.html"):
+                "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
     # The same navbar on every page. aria-current="page" is the only difference.
@@ -276,6 +276,8 @@ def main():
         text = page.read_text(encoding="utf-8")
         if "<title>" not in text or 'name="description"' not in text or 'rel="canonical"' not in text:
             bad.append(f"{page.name}: needs a title, description and canonical URL")
+        if "Official links:" not in text:
+            bad.append(f"{page.name}: the footer needs the Official links note")
         found = re.search(r'<header class="topbar">.*?</header>', text, re.S)
         if not found:
             bad.append(f"{page.name}: no navbar")
