@@ -575,3 +575,19 @@ nav a.nav-cta[aria-current="page"] { color: #1a0f33; text-decoration: none; box-
   .design-stats { margin-bottom: 0; }
   .design-code { grid-column: 1 / -1; margin-top: 10px; }
 }
+
+/* Press kit */
+.press-page { max-width: 940px; }
+.press-page .page-head .aside { max-width: none; }
+.press-page .panel { margin: 0 0 28px; }
+.press-logos { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; align-items: end; }
+.press-logos figure { margin: 0; }
+.press-logos img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--border); }
+.press-logos figcaption { margin-top: 8px; font-size: 14px; color: #e6dcff; }
+.press-h { color: var(--cream); margin: 0 0 6px; }
+.press-cards { width: 100%; margin: 14px 0 28px; }
+.press-cards figcaption a { font-weight: 600; font-size: 13px; }
+@media (max-width: 700px) {
+  .press-logos { grid-template-columns: 1fr; }
+  .press-logos figure:first-child { max-width: 200px; }
+}
