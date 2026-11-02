@@ -17,6 +17,7 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the screenshot lightbox |
 | `designs.html`, `designs.js` | the paint jobs and vinyl groups players share, with their share codes (also the Online page's newest three) |
 | `press.html` | the press kit: facts, logo, social preview, screenshots and links |
+| `faq.html` | common questions (recomp or emulator, your own copy, online, Steam Deck, Mac, requirements), with FAQPage structured data |
 | `images/` | screenshots, the logo, the social preview (drawn from the logo and plain text, no game assets), the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
