@@ -9,6 +9,10 @@ Checks:
   allauth's provider redirect with callback_url /account.html, and the 13-or-older line;
 - signed in, it shows the account, with the API's text as text, and the navbar says "Account";
 - ?error=busy is shown, and the address is cleaned;
+- the game link: the launcher's #link=<token> asks to link the gamertag the service names (as
+  text), or to sign in first; a claimed request says to confirm in the launcher, a linked one
+  says so, a token the service does not know is explained; a linked account shows its game and
+  Unlink, and a frozen link says why;
 - the other pages never call /api/.
 
   python3 tools/test_account_page.py   # needs no packages
@@ -35,6 +39,8 @@ CONFIG = {"status": 200, "data": {
     "account": {"login_methods": ["email"], "is_open_for_signup": False, "login_by_code_enabled": True},
     "socialaccount": {"providers": [{"id": "discord", "name": "Discord", "flows": ["provider_redirect"]},
                                     {"id": "github", "name": "GitHub", "flows": ["provider_redirect"]}]}}}
+TOKENS = {"P" * 43: "pending", "C" * 43: "claimed", "L" * 43: "linked"}
+LINKED = {"state": "frozen", "gamertag": "DriverA", "since": "2026-11-03"}
 ME = {"id": "K7Q2-XM4P", "created": "2026-11-03", "methods": ["discord", "email"], "sessions": 2, "recent": True,
       "link": None, "events": [{"at": "2026-11-03T12:00:00Z", "event": "<img src=x onerror=alert(1)>signed in"}]}
 
@@ -89,9 +95,10 @@ def dom_of(browser, url, profile):
 
 
 class Api:
-    """What the accounts service answers, by scenario: none (a static copy), out or in."""
+    """What the accounts service answers, by scenario: none (a static copy), out, in or linked."""
     mode = "out"
     calls = []
+    posts = []
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -107,10 +114,22 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/auth/browser/v1/config"):
             return self.reply(200, json.dumps(CONFIG).encode(), "application/json")
         if self.path.startswith("/api/me"):
-            if Api.mode == "in":
-                return self.reply(200, json.dumps(ME).encode(), "application/json")
+            if Api.mode in ("in", "linked"):
+                doc = dict(ME, link=LINKED if Api.mode == "linked" else None)
+                return self.reply(200, json.dumps(doc).encode(), "application/json")
             return self.reply(401, b'{"detail": "Unauthorized"}', "application/json")
         return self.reply(404, b'{"status": 404}', "application/json")
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+        Api.posts.append((self.path, body))
+        if self.path == "/api/link/peek" and Api.mode == "in":
+            state = TOKENS.get(body.get("token"))
+            if state is None:
+                return self.reply(404, b'{"error": "not found"}', "application/json")
+            doc = {"state": state, "gamertag": "<b>DriverA</b>", "expires": 0, "replaces": None}
+            return self.reply(200, json.dumps(doc).encode(), "application/json")
+        return self.reply(401, b'{"detail": "Unauthorized"}', "application/json")
 
     def reply(self, code, body, ctype):
         self.send_response(code)
@@ -167,6 +186,31 @@ def main():
                   "events go in as text")
             check("Account" in [x.strip() for x in d.texts], "the navbar says Account")
             check(not d.shown("delete-reauth"), "no sign-in-again note after a recent sign-in")
+
+            print("-- linking the game")
+            d = dom_of(browser, base + "/account.html#link=" + "P" * 43, profile)
+            check(d.shown("link-panel") and d.shown("link-buttons"), "the launcher's link asks to link")
+            check("Link the game of <b>DriverA</b> to this account?" in d.text(),
+                  "naming the gamertag the service gave, as text (its markup shows as typed)")
+            check(Api.posts[-1] == ("/api/link/peek", {"token": "P" * 43}), "it peeks with the token from the address")
+            d = dom_of(browser, base + "/account.html#link=" + "C" * 43, profile)
+            check("Now confirm in the launcher. It shows account K7Q2-XM4P." in d.text() and not d.shown("link-buttons"),
+                  "a claimed link says to confirm in the launcher")
+            d = dom_of(browser, base + "/account.html#link=" + "L" * 43, profile)
+            check("is linked to this account" in d.text(), "a linked one says so")
+            d = dom_of(browser, base + "/account.html#link=" + "X" * 43, profile)
+            check("That link or code does not work" in d.text(), "an unknown token is explained")
+            check(d.shown("link-code-form") and "Not linked. Link it from the launcher" in d.text()
+                  and not d.shown("game-actions"), "an account with no game: the code form and how to link")
+            Api.mode = "out"
+            Api.posts.clear()
+            d = dom_of(browser, base + "/account.html#link=" + "P" * 43, profile)
+            check(d.shown("link-panel") and d.shown("link-signin") and d.shown("signin"), "signed out: sign in first")
+            check(Api.posts == [], "and nothing is sent before the sign-in")
+            Api.mode = "linked"
+            d = dom_of(browser, base + "/account.html", profile)
+            check("DriverA (linked" in d.text() and d.shown("game-actions"), "a linked account shows its game and Unlink")
+            check(d.shown("game-note") and "on hold" in d.text(), "a frozen link says why")
 
             print("-- an error after a sign-in")
             Api.mode = "out"
