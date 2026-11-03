@@ -16,12 +16,13 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `leaderboards.html`, `leaderboards.js` | the public server's leaderboards on a map of Colorado |
 | `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the screenshot lightbox |
 | `designs.html`, `designs.js` | the paint jobs and vinyl groups players share, with their share codes (also the Online page's newest three) |
+| `account.html`, `account.js` | website accounts: sign in with Discord, GitHub or an emailed code, see the account, sign out everywhere, delete it. It talks to the accounts service at `/api/` on the same site ([forza-live, `accounts/`](https://github.com/FH1-ReImagined/forza-live/tree/main/accounts)); a copy of the site without `/api/` says accounts are not available. The navbar's "Sign in" link says "Account" once this browser signed in (a `localStorage` hint: no other page calls the API) |
 | `press.html` | the press kit: facts, logo, social preview, screenshots and links |
 | `faq.html` | common questions (recomp or emulator, your own copy, online, Steam Deck, Mac, requirements), with FAQPage structured data |
 | `images/` | screenshots, the logo, the social preview (drawn from the logo and plain text, no game assets), the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
-| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py` and `build_designs.py` and their tests `test_build_gallery.py` and `test_build_designs.py` (not published) |
+| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py` and `build_designs.py` and their tests `test_build_gallery.py` and `test_build_designs.py`, and `test_account_page.py` (not published) |
 
 ## Preview
 
@@ -45,7 +46,7 @@ minute 17) with a fresh copy of the public server's `/leaderboards/snapshot`, be
 server speaks plain http and the https page cannot fetch it from the browser. A scheduled run
 that cannot reach the server fails and leaves the published site as it was. Pull requests run
 `tools/check_site.py` on the assembled site (local links and images, the data files),
-`tools/test_build_gallery.py` and `tools/test_build_designs.py`.
+`tools/test_build_gallery.py`, `tools/test_build_designs.py` and `tools/test_account_page.py`.
 
 The same workflow copies the community photos: the photos players share from the game's photo
 mode, once a maintainer has approved them on the server. Set the repository variable

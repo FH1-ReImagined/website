@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
+<title>Your account - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="Sign in to the Forza Horizon 1: ReImagined website with Discord, GitHub or an email code. A website account is optional.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://forza.dyotson.dev/account.html">
+<meta name="theme-color" content="#140d2e">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#account">Skip to your account</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars" style="--stars:.7"></div>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html">Horizon World</a>
+          <a href="leaderboards.html">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="designs.html">Designs</a>
+          <a href="press.html">Press</a>
+          <a href="faq.html">FAQ</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+    <a class="nav-account" href="account.html" aria-current="page">Sign in</a>
+  </nav>
+</header>
+
+<main class="board-page account-page" id="account">
+  <div class="page-head">
+    <p class="kicker">Community &middot; Website account</p>
+    <h1><span class="h1-big">Your account</span></h1>
+    <p class="aside">A website account is optional. You don't need one to play, online or offline.</p>
+  </div>
+
+  <p class="account-state" id="account-state" role="status">Loading your account...</p>
+  <noscript><p class="account-state error">Signing in needs JavaScript.</p></noscript>
+  <p class="notice" id="account-message" role="alert" hidden></p>
+
+  <section class="panel" id="signin" aria-labelledby="signin-h" hidden>
+    <h2 id="signin-h">Sign in</h2>
+    <p>Sign in with Discord, GitHub or an email address. Signing in the first time makes your account; there is no separate sign-up.</p>
+    <div class="cta signin-buttons">
+      <form method="post" action="/api/auth/browser/v1/auth/provider/redirect" data-provider="discord" hidden>
+        <input type="hidden" name="provider" value="discord">
+        <input type="hidden" name="callback_url" value="/account.html">
+        <input type="hidden" name="process" value="login">
+        <input type="hidden" name="csrfmiddlewaretoken" value="">
+        <button type="submit" class="btn primary">Sign in with Discord</button>
+      </form>
+      <form method="post" action="/api/auth/browser/v1/auth/provider/redirect" data-provider="github" hidden>
+        <input type="hidden" name="provider" value="github">
+        <input type="hidden" name="callback_url" value="/account.html">
+        <input type="hidden" name="process" value="login">
+        <input type="hidden" name="csrfmiddlewaretoken" value="">
+        <button type="submit" class="btn primary">Sign in with GitHub</button>
+      </form>
+    </div>
+
+    <form class="email-form" id="email-form" hidden>
+      <label for="email">Or get a sign-in code by email</label>
+      <div class="field-row">
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+        <button type="submit" class="btn ghost">Email me a code</button>
+      </div>
+    </form>
+
+    <form class="email-form" id="code-form" hidden>
+      <label for="code">Enter the 8-digit code from the mail</label>
+      <p class="aside">It works for 10 minutes, in this browser only. No mail? Check your spam folder, or ask for a new code.</p>
+      <div class="field-row">
+        <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 -]{8,10}" maxlength="10" required>
+        <button type="submit" class="btn ghost">Sign in</button>
+      </div>
+    </form>
+
+    <p class="aside">You must be 13 or older to make an account. From Discord or GitHub the website keeps only your account's number there, not your name or email address. An email address is never stored: only a one-way hash of it. Details: the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/PRIVACY.md">privacy policy</a>.</p>
+  </section>
+
+  <section class="panel" id="profile" aria-labelledby="profile-h" hidden>
+    <h2 id="profile-h">Account <span id="account-id" class="account-id"></span></h2>
+    <dl class="account-facts">
+      <dt>Created</dt><dd id="account-created"></dd>
+      <dt>Signs in with</dt><dd id="account-methods"></dd>
+      <dt>Signed in on</dt><dd id="account-sessions"></dd>
+      <dt>Your game</dt><dd>Not linked. Linking your game from the launcher comes in a later update; until then a website account can only browse.</dd>
+    </dl>
+    <div class="cta">
+      <button type="button" class="btn ghost" id="logout">Sign out</button>
+      <button type="button" class="btn ghost" id="logout-all">Sign out everywhere</button>
+    </div>
+
+    <h3>Recent activity</h3>
+    <ul class="account-events" id="account-events"></ul>
+
+    <h3>Delete your account</h3>
+    <p>Deleting your account removes it and everything the website keeps about it at once. Things you shared from the game (photos, designs) belong to your game, not to this account, and stay.</p>
+    <p class="aside" id="delete-reauth" hidden>For your safety, deleting needs a sign-in in the last 10 minutes. Sign out, sign in again, then delete.</p>
+    <button type="button" class="btn ghost danger" id="delete">Delete my account</button>
+  </section>
+</main>
+
+<footer>
+  <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+  <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+</footer>
+
+<script src="nav.js"></script>
+<script src="account.js"></script>
+</body>
+</html>

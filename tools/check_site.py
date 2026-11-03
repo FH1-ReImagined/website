@@ -245,7 +245,8 @@ def main():
         except ValueError as e:
             bad.append(f"{f.relative_to(root)}: {e}")
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
-                 "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
+                 "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "account.html", "account.js",
+                 "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
             bad.append(f"missing {name}")
@@ -270,6 +271,15 @@ def main():
                 "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
+    # The account page: never indexed, and its sign-in forms post to the accounts service only.
+    account = (root / "account.html").read_text(encoding="utf-8") if (root / "account.html").is_file() else ""
+    if account and 'content="noindex"' not in account:
+        bad.append("account.html: needs <meta name=\"robots\" content=\"noindex\">")
+    for action in re.findall(r'<form\b[^>]*\baction="([^"]*)"', account):
+        if action != "/api/auth/browser/v1/auth/provider/redirect":
+            bad.append(f"account.html: a form posts to {action}")
+    if "https://forza.dyotson.dev/account.html" in sm:
+        bad.append("sitemap.xml: account.html is not for search engines")
     # The same navbar on every page. aria-current="page" is the only difference.
     navs = {}
     for page in sorted(root.glob("*.html")):

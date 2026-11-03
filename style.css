@@ -591,3 +591,35 @@ nav a.nav-cta[aria-current="page"] { color: #1a0f33; text-decoration: none; box-
   .press-logos { grid-template-columns: 1fr; }
   .press-logos figure:first-child { max-width: 200px; }
 }
+
+/* Account page */
+.account-page { max-width: 820px; }
+.account-page .panel { width: 100%; margin: 0 0 24px; }
+.account-state { color: var(--muted); margin: 8px 4px 16px; }
+.account-state[hidden], .account-page [hidden] { display: none; }
+.account-page .notice { margin: 0 0 18px; }
+.account-page .notice.error { border-left-color: var(--orange); }
+.signin-buttons form { margin: 0; }
+.signin-buttons button.btn, .account-page button.btn { font: inherit; font-weight: 800; cursor: pointer; border: 0; }
+.account-page button.btn.ghost { border: 2px solid var(--orange); }
+.email-form { margin: 22px 0 0; }
+.email-form label { display: block; font-weight: 700; color: var(--cream); margin-bottom: 8px; }
+.field-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.field-row input {
+  flex: 1 1 220px; min-width: 0; font: inherit; color: var(--cream); background: rgba(20, 13, 46, .6);
+  border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;
+}
+.field-row input:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+.account-id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--orange); }
+.account-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 18px; }
+.account-facts dt { color: var(--muted); font-weight: 700; }
+.account-facts dd { margin: 0; color: #e6dcff; }
+.account-events { list-style: none; margin: 0 0 18px; padding: 0; font-size: 15px; color: #e6dcff; }
+.account-events li { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.account-events time { color: var(--muted); margin-right: 6px; }
+.account-page h3 { color: var(--cream); margin: 22px 0 10px; }
+.account-page button.btn.danger { border-color: var(--pink); color: #ffe3e8; background: rgba(255, 84, 112, .12); }
+@media (max-width: 700px) {
+  .account-facts { grid-template-columns: 1fr; gap: 2px; }
+  .account-facts dd { margin-bottom: 8px; }
+}
