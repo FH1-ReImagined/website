@@ -15,6 +15,9 @@
 # The paint jobs and vinyl groups players share come from the same server's
 # /community/designs.json (tools/build_designs.py, the same checks and a cache of its own); a
 # server without that feed gives no designs, and online.html hides its designs section.
+# Both builds add each item's like total from the website accounts service's public totals, the
+# repository variable LIKES_URL (https://forza.dyotson.dev/api/likes/counts; unset or unreachable:
+# no totals in that build, which goes on).
 name: pages
 
 on:
@@ -74,6 +77,7 @@ jobs:
         id: gallery
         env:
           GALLERY_FEED_URL: ${{ vars.GALLERY_FEED_URL }}
+          LIKES_URL: ${{ vars.LIKES_URL }}
           REQUIRE_FEED: ${{ github.event_name == 'schedule' && '--require-feed' || '' }}
         run: python tools/build_gallery.py _site --cache .gallery-cache $REQUIRE_FEED
       - name: Save the community photos cache
@@ -93,6 +97,7 @@ jobs:
         id: designs
         env:
           GALLERY_FEED_URL: ${{ vars.GALLERY_FEED_URL }}
+          LIKES_URL: ${{ vars.LIKES_URL }}
           REQUIRE_FEED: ${{ github.event_name == 'schedule' && '--require-feed' || '' }}
         run: python tools/build_designs.py _site --cache .designs-cache $REQUIRE_FEED
       - name: Save the community designs cache

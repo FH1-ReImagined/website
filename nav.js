@@ -1,4 +1,4 @@
-// The navbar. Below 700px the Menu button opens the full list; Escape closes it
+// The navbar, and its account link's hint (at the end). Below 700px the Menu button opens the full list; Escape closes it
 // and focus returns to the button. Wider than that, Online and Community open on
 // hover, focus or click. The html.js class (set in the page) is what hides the
 // narrow list: without this script the links stay on the page.
@@ -110,4 +110,15 @@
   }
   if (mq.addEventListener) mq.addEventListener("change", onWidth);
   else if (mq.addListener) mq.addListener(onWidth);
+})();
+
+// The account link says "Account" for a visitor who signed in on this browser (account.js sets
+// the hint when /api/me answers). Only the account page calls the API.
+(function () {
+  "use strict";
+  var link = document.querySelector(".nav-account");
+  if (!link) return;
+  try {
+    if (localStorage.getItem("fh-signed-in") === "1") link.textContent = "Account";
+  } catch (e) { /* storage off: it stays "Sign in" */ }
 })();

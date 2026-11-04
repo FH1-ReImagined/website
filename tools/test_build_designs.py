@@ -3,8 +3,10 @@
 SYNTHETIC, drawn here with Pillow at test time: never commit a screenshot of the game, or any
 other image from it, to this repository.
 
-Checks what a build publishes: newest first, only the fields the pages show (no "xuid" or
-"owner" anywhere in the output, no description), PNGs of pixels alone, the size limits, the
+Checks what a build publishes: newest first, only the fields the pages show (no "xuid" anywhere
+in the output, an "owner" only as the server's 12-hex-digit player id, no description), the like
+totals from a stand-in for the accounts service (none, and no failure, when it is down), PNGs of
+pixels alone, the size limits, the
 entries and files it must refuse (a SHA-256 mismatch, other formats, pixel bombs, too small,
 too large or too wide, broken or animated files, previews on another host, bad share codes,
 types or counts), the cache (a second build downloads nothing; a withdrawn design leaves the
@@ -13,7 +15,8 @@ check_site.py must pass on the result and fail on a tampered one. Then, in a hea
 Chromium (CHROME=path, else one on PATH or Playwright's): designs.html lists each kind in its
 tab with the players' text as text, the copy button copies the share code (or selects it), the
 tabs switch by click, arrow key and address, the sort and the filter work, and online.html shows
-the 3 newest and hides its section when there are none.
+the 3 newest and hides its section when there are none; each card shows its like total and links
+the creator's gamertag to their page, and profile.html?p=<owner> lists that player's designs.
 
   python3 tools/test_build_designs.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_designs.py --serve 8000   # then serve the fixture site for a look
@@ -47,7 +50,7 @@ sys.path.insert(0, str(TOOLS))
 import build_designs  # noqa: E402
 import check_site  # noqa: E402
 from build_gallery import Refused  # noqa: E402
-from test_build_gallery import (LEAK, QuietFiles, assemble, browser_args, check, dom_of, failures,  # noqa: E402
+from test_build_gallery import (LEAK, OWNER_A, OWNER_B, QuietFiles, assemble, browser_args, check, dom_of, failures,  # noqa: E402
                                 find_browser, free_port, jpeg_with_metadata, serve_dir)
 from test_build_gallery import FeedHandler as _GalleryHandler  # noqa: E402
 
@@ -159,14 +162,15 @@ def fixtures():
     markup = '<img src=x onerror="alert(1)"> & "quotes"'
     one = png(livery(288, 160, 1, "Synthetic paint job 1"))
     good = {
-        "l1": add("l1", "livery", one, NOW - 100, "Sunset stripes", "Synthetic One", "Synthetic GT", 120, (4.6, 25)),
+        "l1": add("l1", "livery", one, NOW - 100, "Sunset stripes", "Synthetic One", "Synthetic GT", 120, (4.6, 25),
+                  owner=OWNER_A),
         "v1": add("v1", "vinylgroup", png(vinyl(256, 128, 2, "Synthetic vinyl 1")), NOW - 150, "Flame decal",
-                  "Synthetic Six", "A car a vinyl group does not keep", 55, (4.0, 4)),
+                  "Synthetic Six", "A car a vinyl group does not keep", 55, (4.0, 4), owner=OWNER_B),
         "l2": add("l2", "livery", png_with_metadata(livery(288, 160, 3, "Synthetic paint job 2")), NOW - 200, markup,
                   "<b>Tag</b>", "Synthetic Roadster <i>", 3, (5, 1), xuid=LEAK, owner=LEAK, ownerXuid=LEAK,
                   description=f"made by owner xuid {LEAK}"),
         "l3": add("l3", "livery", jpeg_with_metadata(livery(288, 160, 4, "Synthetic JPEG paint job")), NOW - 300,
-                  weird_title, "Synthetic Three", None, 900, (0, 0)),
+                  weird_title, "Synthetic Three", None, 900, (0, 0), owner=OWNER_A),
         "v2": add("v2", "vinylgroup", png(vinyl(256, 128, 5, "Synthetic vinyl 2").quantize(64, Image.Quantize.FASTOCTREE)),
                   NOW - 350, "Number plate", "Synthetic Seven"),  # a palette PNG with a transparent colour
         "l4": add("l4", "livery", png(livery(1024, 512, 6, "Synthetic big preview")), NOW - 400, long_title,
@@ -221,7 +225,9 @@ def fixtures():
     liveries = [good[k] for k in ("l1", "l2", "l3", "l4", "l5", "l6")]
     vinyls = [good[k] for k in ("v1", "v2", "v3")]
     expect = {"good": good, "bad": bad, "markup": markup, "weird_title": "Two lines and a bidi override",
-              "long_title": long_title[:80], "entries": {}}
+              "long_title": long_title[:80], "entries": {},
+              "owners": {good["l1"]: OWNER_A, good["v1"]: OWNER_B, good["l3"]: OWNER_A},
+              "likes": {good["l1"]: 7, good["v1"]: 2, good["l3"]: 1, good["l4"]: "9", "AAAA": -1}}
     for e in entries:  # the first entry of each id: the one the build keeps
         if isinstance(e, dict):
             expect["entries"].setdefault(e["id"], e)
@@ -234,6 +240,8 @@ class Feed:
     def __init__(self):
         self.doc = {"version": 1, "generated": NOW, "designs": []}
         self.raw = None          # bytes served instead of the doc (a broken feed)
+        self.likes = {}          # the accounts service's public totals of designs
+        self.likes_status = 200
         self.missing = False     # the designs feed answers 404 (a server without it)
         self.files = {}
         self.requests = collections.Counter()   # preview path -> requests
@@ -252,6 +260,9 @@ class FeedHandler(_GalleryHandler):
                 return self.reply(404, b"not found", "text/plain")
             body = f.raw if f.raw is not None else json.dumps(f.doc).encode()
             return self.reply(200, body, "application/json")
+        if self.path == "/api/likes/counts?kind=design":
+            body = json.dumps({"version": 1, "kind": "design", "generated": NOW, "counts": f.likes}).encode()
+            return self.reply(f.likes_status, body, "application/json")
         if self.path.startswith("/community/design-img/"):
             f.requests[self.path] += 1
             if f.fail_images:
@@ -263,8 +274,10 @@ class FeedHandler(_GalleryHandler):
 
 # ---- running the build ----
 
-def build(site, cache, feed_url, *extra):
-    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_ACTIONS",)}
+def build(site, cache, feed_url, *extra, likes_url=None):
+    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_ACTIONS", "LIKES_URL")}
+    if likes_url:
+        env["LIKES_URL"] = likes_url
     out_file = site.parent / "github_output"
     out_file.write_text("")
     env["GITHUB_OUTPUT"] = str(out_file)
@@ -324,9 +337,17 @@ def check_published(site, liveries, vinyls, expect, log):
             text = data
         else:
             text = outside_pixels(data)
-        if LEAK.encode() in data or any(w in text.lower() for w in (b"xuid", b"owner")):
+        if LEAK.encode() in data or b"xuid" in text.lower() or (f.suffix != ".json" and b"owner" in text.lower()):
             leaks.append(f.name)
-    check(not leaks, f"no 'xuid', 'owner' or the leaked XUID anywhere in the output {leaks or ''}")
+    check(not leaks, f"no 'xuid' or the leaked XUID anywhere in the output, no 'owner' in a PNG {leaks or ''}")
+    check({d["id"]: d["owner"] for d in designs if "owner" in d} == expect["owners"],
+          "owner: only the server's player ids (the XUID the feed leaked is dropped)")
+    if expect.get("with_likes"):
+        want = {i: n for i, n in expect["likes"].items() if isinstance(n, int) and n >= 0}
+        check({d["id"]: d.get("likes") for d in designs} == {i: want.get(i, 0) for i in by},
+              "likes: every design has its total (0 when none; bad counts left out)")
+    else:
+        check(not any("likes" in d for d in designs), "no like totals without LIKES_URL")
     m = by.get(good["l2"], {})
     check(m.get("title") == expect["markup"] and m.get("gamertag") == "<b>Tag</b>" and m.get("car") == "Synthetic Roadster <i>",
           "player text kept as written (not escaped)")
@@ -390,6 +411,12 @@ def check_tampering(site):
     doc["designs"][0] = dict(first, code="NO-GOOD")
     data.write_text(json.dumps(doc))
     fails("a bad share code")
+    doc["designs"][0] = dict(first, owner=LEAK)
+    data.write_text(json.dumps(doc))
+    fails("an owner that is a XUID")
+    doc["designs"][0] = dict(first, likes=-3)
+    data.write_text(json.dumps(doc))
+    fails("a negative like total")
     data.write_bytes(original)
 
     png_path = site / first["src"]
@@ -526,6 +553,19 @@ def check_pages(browser, site, liveries, vinyls, expect, profile):
         check("Rated 5.0 out of 5 by 1 player" in [a.get("aria-label") for t, a in page.tags] and "No ratings yet" in page.texts
               and "900 downloads" in page.texts and "0 downloads" in page.texts,
               "designs.html: ratings and downloads are spelled out")
+        likes = [a for t, a in page.tags if t == "a" and "like" in a.get("class", "").split()]
+        check(len(likes) == 9 and all(a.get("href") == "account.html" for a in likes)
+              and any(a.get("aria-label", "").startswith("7 likes") for a in likes),
+              "designs.html: each design's like total, a link to sign in for a visitor who did not")
+        creators = {a.get("href") for t, a in page.tags if t == "a" and a.get("href", "").startswith("profile.html")}
+        check(creators == {f"profile.html?p={OWNER_A}", f"profile.html?p={OWNER_B}"},
+              "designs.html: the creators' gamertags link to their pages (only those with a player id)")
+        prof = dom_of(browser, base + f"/profile.html?p={OWNER_A}", profile)
+        listed = [a["id"][7:] for t, a in prof.tags if t == "li" and a.get("id", "").startswith("design-")]
+        check(listed == [good["l1"], good["l3"]], "profile.html: only that player's designs, newest first")
+        check(any("0 photos" in x and "2 designs" in x and "8 likes" in x for x in prof.texts)
+              and "Synthetic One" in [x.strip() for x in prof.texts],
+              "profile.html: their gamertag and how many designs and likes")
 
         (site / "designs-test.js").write_text(HARNESS, encoding="utf-8")
         harness = (site / "designs.html").read_text(encoding="utf-8").replace(
@@ -623,9 +663,20 @@ def main():
         assemble(site)
 
         print("-- a build with the fixture feed (GALLERY_FEED_URL names the photos feed)")
+        feed.likes = expect["likes"]
         rc, log, outputs = build(site, cache, feed.url + "/community/gallery.json")
         check(rc == 0, "the build exits 0")
         check_published(site, liveries, vinyls, expect, log)
+        expect["with_likes"] = True
+        rc, log, _ = build(site, cache, feed.url + "/community/gallery.json", likes_url=feed.url)
+        check(rc == 0, "with LIKES_URL: the build exits 0")
+        check_published(site, liveries, vinyls, expect, log)
+        feed.likes_status = 500
+        rc, log, _ = build(site, cache, feed.url, "--require-feed", likes_url=feed.url)
+        expect["with_likes"] = False
+        check(rc == 0 and "no likes in this build" in log, "the like totals failing: no totals, exit 0 even with --require-feed")
+        check_published(site, liveries, vinyls, expect, log)
+        feed.likes_status = 200
         good_ids = set(liveries + vinyls)
         unique = len({e["sha256"] for e in entries if isinstance(e, dict) and e.get("id") in good_ids})
         noted = len([k for k in ("gif", "bomb", "toolarge", "tiny", "wide", "trunc", "text", "deep", "apng")])
@@ -712,7 +763,7 @@ def main():
         feed.doc["designs"], feed.fail_images = entries, False
 
         print("-- the pages, in a browser")
-        rc, log, _ = build(site, cache, feed.url)
+        rc, log, _ = build(site, cache, feed.url, likes_url=feed.url)
         browser = find_browser()
         if browser:
             print(f"     {browser}")
@@ -725,7 +776,7 @@ def main():
 
         print(f"\n{len(failures)} failed" if failures else "\nall passed")
         if args.serve:
-            build(site, cache, feed.url)
+            build(site, cache, feed.url, likes_url=feed.url)
             print(f"serving the fixture site on http://127.0.0.1:{args.serve}/designs.html (Ctrl-C to stop)", flush=True)
             handler = functools.partial(QuietFiles, directory=str(site))
             try:

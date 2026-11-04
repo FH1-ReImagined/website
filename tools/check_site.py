@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Check an assembled site (tools/assemble.sh OUT): every local href/src of every page names a
 file that is there, and the JSON data files parse. When the community photos were built into it
-(tools/build_gallery.py), also data/gallery.json: only the fields the pages show (never a "xuid"
-or an "owner"), every listed photo there and no unlisted one, sizes within the limits, and JPEGs
+(tools/build_gallery.py), also data/gallery.json: only the fields the pages show (never a "xuid";
+an "owner" only as the server's 12-hex-digit player id, and "likes" only as a count), every listed
+photo there and no unlisted one, sizes within the limits, and JPEGs
 without metadata (no APP1-APP15 or COM segment, nothing after the end). When the community
 designs were (tools/build_designs.py), data/designs.json the same way: only the fields the pages
 show, every listed preview there and no unlisted one, and PNGs of pixels alone (IHDR, PLTE,
@@ -15,10 +16,14 @@ import zlib
 from pathlib import Path
 from urllib.parse import urlsplit
 
-GALLERY_KEYS = {"id", "title", "gamertag", "car", "location", "src", "w", "h", "thumb", "tw", "th"}
+GALLERY_KEYS = {"id", "title", "gamertag", "owner", "likes", "car", "location", "src", "w", "h", "thumb", "tw",
+                "th"}
 FULL_WIDTH, THUMB_WIDTH, MAX_SIDE = 1920, 480, 7680
-DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "car", "downloads", "rating", "ratings", "createdAt",
-               "src", "w", "h"}
+DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car", "downloads", "rating",
+               "ratings", "createdAt", "src", "w", "h"}
+OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
+# Pages that are not in the navbar: no link in it is the current page.
+NOT_IN_NAV = {"profile.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
@@ -96,7 +101,7 @@ def is_count(v, limit=10 ** 9):
 def check_gallery(root):
     path = root / "data" / "gallery.json"
     text = path.read_text(encoding="utf-8")
-    bad = [f"data/gallery.json: contains {w!r}" for w in ("xuid", "owner") if w in text.lower()]
+    bad = [f"data/gallery.json: contains {w!r}" for w in ("xuid",) if w in text.lower()]
     try:
         doc = json.loads(text)
     except ValueError:
@@ -116,6 +121,7 @@ def check_gallery(root):
             bad.append(f"{where}: unexpected fields {sorted(set(p) - GALLERY_KEYS)}")
         if not (isinstance(p.get("gamertag"), str) and p["gamertag"] and isinstance(p.get("title"), str)):
             bad.append(f"{where}: no gamertag or title")
+        bad += check_owner_and_likes(where, p)
         if p.get("src") != f"photos/{pid}.jpg" or p.get("thumb") != f"photos/{pid}-thumb.jpg":
             bad.append(f"{where}: src/thumb are not photos/{pid}.jpg and photos/{pid}-thumb.jpg")
             continue
@@ -132,6 +138,15 @@ def check_gallery(root):
     if (root / "photos").is_dir():
         bad += [f"photos/{f.name}: not in data/gallery.json"
                 for f in sorted((root / "photos").iterdir()) if f"photos/{f.name}" not in listed]
+    return bad
+
+
+def check_owner_and_likes(where, item):
+    bad = []
+    if "owner" in item and not (isinstance(item["owner"], str) and OWNER_RE.fullmatch(item["owner"])):
+        bad.append(f"{where}: an owner that is not a player id")
+    if "likes" in item and not is_count(item["likes"]):
+        bad.append(f"{where}: bad likes")
     return bad
 
 
@@ -192,8 +207,9 @@ def check_designs(root):
             bad.append(f"{where}: no id")
             continue
         did = d["id"]
-        if set(d) - DESIGN_KEYS:  # never an owner, a XUID, the design itself or its description
+        if set(d) - DESIGN_KEYS:  # never a XUID, the design itself or its description
             bad.append(f"{where}: unexpected fields {sorted(set(d) - DESIGN_KEYS)}")
+        bad += check_owner_and_likes(where, d)
         if d.get("type") not in ("livery", "vinylgroup"):
             bad.append(f"{where}: bad type")
         if not re.fullmatch(r"[A-Za-z0-9]{4,15}", str(d.get("code"))) or str(d.get("code")).upper() in codes:
@@ -245,7 +261,9 @@ def main():
         except ValueError as e:
             bad.append(f"{f.relative_to(root)}: {e}")
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
-                 "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "robots.txt", "sitemap.xml", ".nojekyll",
+                 "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "account.html", "account.js",
+                 "likes.js", "profile.html", "profile.js",
+                 "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
             bad.append(f"missing {name}")
@@ -270,6 +288,21 @@ def main():
                 "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
+    # The account page: never indexed, and its sign-in forms post to the accounts service only.
+    account = (root / "account.html").read_text(encoding="utf-8") if (root / "account.html").is_file() else ""
+    if account and 'content="noindex"' not in account:
+        bad.append("account.html: needs <meta name=\"robots\" content=\"noindex\">")
+    for action in re.findall(r'<form\b[^>]*\baction="([^"]*)"', account):
+        if action != "/api/auth/browser/v1/auth/provider/redirect":
+            bad.append(f"account.html: a form posts to {action}")
+    if "https://forza.dyotson.dev/account.html" in sm:
+        bad.append("sitemap.xml: account.html is not for search engines")
+    # Profile pages: one page for every player (profile.html?p=<id>), never indexed.
+    profile = (root / "profile.html").read_text(encoding="utf-8") if (root / "profile.html").is_file() else ""
+    if profile and 'content="noindex"' not in profile:
+        bad.append("profile.html: needs <meta name=\"robots\" content=\"noindex\">")
+    if "https://forza.dyotson.dev/profile.html" in sm:
+        bad.append("sitemap.xml: profile.html is not for search engines")
     # The same navbar on every page. aria-current="page" is the only difference.
     navs = {}
     for page in sorted(root.glob("*.html")):
@@ -284,8 +317,10 @@ def main():
             continue
         nav = re.sub(r'\s*aria-current="page"', "", found.group(0))
         navs.setdefault(nav, []).append(page.name)
-        if 'aria-current="page"' not in found.group(0):
+        if 'aria-current="page"' not in found.group(0) and page.name not in NOT_IN_NAV:
             bad.append(f"{page.name}: mark the current page with aria-current")
+        if 'aria-current="page"' in found.group(0) and page.name in NOT_IN_NAV:
+            bad.append(f"{page.name}: is not in the navbar, so no link there is the current page")
     if len(navs) > 1:
         bad.append("navbar markup differs across pages: " +
                    "; ".join(", ".join(names) for names in navs.values()))

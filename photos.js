@@ -4,7 +4,9 @@
 // and data/gallery.json, newest first. Every list with data-photos gets them: the front page
 // shows the newest (data-photos="3") and keeps its section hidden while there are none;
 // gallery.html shows them all. Titles and gamertags are the players' own text: they go in with
-// textContent only.
+// textContent only. Each photo has its likes (likes.js) and a link to its owner's profile page
+// (profile.html?p=<owner>, the player id the server publishes). A list with data-photos-owner (the
+// profile page) shows only the photos of the player its address names.
 (function () {
   "use strict";
 
@@ -31,6 +33,8 @@
 
   function text(v) { return typeof v === "string" ? v : ""; }
   function size(v) { return typeof v === "number" && v > 0 && v < 100000 ? Math.round(v) : 0; }
+  function owner(p) { return /^[0-9a-f]{12}$/.test(text(p.owner)) ? p.owner : ""; }
+  var wanted = owner({ owner: new URLSearchParams(location.search).get("p") });
   function usable(p) {
     return p && /^[A-Za-z2-7]{12}$/.test(text(p.id)) && p.src === "photos/" + p.id + ".jpg" &&
       p.thumb === "photos/" + p.id + "-thumb.jpg" && text(p.gamertag) &&
@@ -43,7 +47,7 @@
     return e;
   }
 
-  function item(p) {
+  function item(p, onProfile) {
     var title = text(p.title), tag = text(p.gamertag);
     var where = [text(p.car), text(p.location)].filter(Boolean).join(", ");
     var li = el("li");
@@ -65,14 +69,27 @@
     cap.append(el("b", title || tag), el("small", title ? tag : where));
     b.append(img, cap);
     li.append(b);
+    var foot = el("div", "", "photo-foot");
+    if (owner(p) && !onProfile) {
+      var by = el("a", "More from this player", "photo-by");
+      by.href = "profile.html?p=" + owner(p);
+      by.setAttribute("aria-label", "More from " + tag);
+      foot.append(by);
+    }
+    if (window.FHLikes) foot.append(window.FHLikes.slot("photo", p.id, p.likes));
+    if (foot.childNodes.length) {
+      li.append(foot);
+      li.classList.add("has-foot");
+    }
     return li;
   }
 
   function show(photos, failed) {
     lists.forEach(function (list) {
-      var n = parseInt(list.dataset.photos, 10);
-      var shown = n > 0 ? photos.slice(0, n) : photos;
-      list.replaceChildren.apply(list, shown.map(item));
+      var n = parseInt(list.dataset.photos, 10), onProfile = list.hasAttribute("data-photos-owner");
+      var mine = onProfile ? photos.filter(function (p) { return wanted && owner(p) === wanted; }) : photos;
+      var shown = n > 0 ? mine.slice(0, n) : mine;
+      list.replaceChildren.apply(list, shown.map(function (p) { return item(p, onProfile); }));
       var section = list.closest("[data-photos-section]");
       if (section) {
         section.hidden = !shown.length;
@@ -85,6 +102,7 @@
       s.hidden = !failed && photos.length > 0;
       s.classList.toggle("error", !!failed);
     });
+    if (window.FHLikes) window.FHLikes.fill(document);
     document.dispatchEvent(new Event("photos:shown"));
   }
 
