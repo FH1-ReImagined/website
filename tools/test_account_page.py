@@ -13,16 +13,27 @@ Checks:
   text), or to sign in first; a claimed request says to confirm in the launcher, a linked one
   says so, a token the service does not know is explained; a linked account shows its game and
   Unlink, and a frozen link says why;
-- the other pages never call /api/.
+- the other pages never call /api/ for a visitor who did not sign in;
+- likes (likes.js) for a visitor who signed in: linked to the game, a thumbs-up pressed for what
+  the key liked and none on its own items, with the live totals, and a click that takes a like
+  back and moves the total; not linked, a link to the account page; signed out since, the hint
+  goes;
+- My items: a linked account lists its game's photos and designs with their state and likes
+  (player text as text, thumbnails only for public ones), links to its public page (found in the
+  site's data files), says when its likes do not count yet, and deletes an item after a confirm
+  (asking for a recent sign-in when the service says so).
 
   python3 tools/test_account_page.py   # needs no packages
 
 The site is assembled with tools/assemble.sh, which copies tracked files: git add new pages first.
 """
+import base64
 import glob
+import html
 import html.parser
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,6 +45,7 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent
 failures = []
+DUMPS = {}
 
 CONFIG = {"status": 200, "data": {
     "account": {"login_methods": ["email"], "is_open_for_signup": False, "login_by_code_enabled": True},
@@ -41,6 +53,84 @@ CONFIG = {"status": 200, "data": {
                                     {"id": "github", "name": "GitHub", "flows": ["provider_redirect"]}]}}}
 TOKENS = {"P" * 43: "pending", "C" * 43: "claimed", "L" * 43: "linked"}
 LINKED = {"state": "frozen", "gamertag": "DriverA", "since": "2026-11-03"}
+ACTIVE = {"state": "active", "gamertag": "DriverA", "since": "2026-11-03", "counted": False}
+OWNER = "0a1b2c3d4e5f"   # the player id of DriverA's photos in the site's data
+P_MINE, P_OTHER, P_HELD, D_MINE = "MINEAAAAAAAA", "OTHERBBBBBBB", "HELDCCCCCCCC", "DESIGNDDDDDD"
+ITEMS = {"items": [
+    {"kind": "photo", "id": P_MINE, "title": "<i>Mine</i>", "state": "live", "public": True, "likes": 5, "created": 2},
+    {"kind": "photo", "id": P_HELD, "title": "", "state": "held", "public": False, "likes": 0, "created": 1},
+    {"kind": "design", "id": D_MINE, "title": "FLAMES", "state": "pending", "public": False, "likes": 0, "created": 0}],
+    "counted": False}
+
+
+def photo(pid, owner, tag, likes):
+    return {"id": pid, "title": "Photo " + pid[:4], "gamertag": tag, "owner": owner, "likes": likes,
+            "src": f"photos/{pid}.jpg", "w": 1280, "h": 720, "thumb": f"photos/{pid}-thumb.jpg", "tw": 480, "th": 270}
+
+
+SETUP = r"""
+try { localStorage.setItem("fh-signed-in", "1"); } catch (e) {}
+window.confirm = function () { return true; };
+"""
+LIKES_TEST = r"""
+(function () {
+  function controls() {
+    var out = {};
+    Array.prototype.forEach.call(document.querySelectorAll("#photos > li"), function (li) {
+      var c = li.querySelector(".like");
+      out[li.id.replace(/^photo-/, "")] = c ? { tag: c.tagName.toLowerCase(), pressed: c.getAttribute("aria-pressed"),
+        text: c.textContent, href: c.getAttribute("href"), own: c.classList.contains("own") } : null;
+    });
+    return out;
+  }
+  function done(out) {
+    var pre = document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify(out);
+    document.body.append(pre);
+  }
+  setTimeout(function () {
+    var out = { before: controls(), hint: localStorage.getItem("fh-signed-in") };
+    var b = document.querySelector("#photo-OTHERBBBBBBB button.like");
+    if (!b) return done(out);
+    b.click();
+    setTimeout(function () { out.after = controls(); done(out); }, 1500);
+  }, 1500);
+})();
+"""
+ITEMS_TEST = r"""
+(function () {
+  function done(out) {
+    var pre = document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify(out);
+    document.body.append(pre);
+  }
+  function rows() {
+    return Array.prototype.map.call(document.querySelectorAll("#items-list > li"), function (li) {
+      var img = li.querySelector("img");
+      return { text: li.querySelector(".item-body").textContent, img: img ? img.getAttribute("src") : null,
+               button: li.querySelector("button").getAttribute("aria-label") };
+    });
+  }
+  setTimeout(function () {
+    var out = { rows: rows(), shown: !document.getElementById("items").hidden,
+                note: document.getElementById("items-note").hidden ? "" : document.getElementById("items-note").textContent,
+                profile: document.getElementById("items-profile").hidden ? null : document.getElementById("items-profile-link").getAttribute("href") };
+    var del = document.querySelector("#items-list > li button");
+    del.click();
+    setTimeout(function () {
+      out.reauth = !document.getElementById("items-reauth").hidden;
+      document.querySelector("#items-list > li button").click();
+      setTimeout(function () {
+        out.message = document.getElementById("account-message").textContent;
+        out.after = rows();
+        done(out);
+      }, 1500);
+    }, 1500);
+  }, 2500);
+})();
+"""
 ME = {"id": "K7Q2-XM4P", "created": "2026-11-03", "methods": ["discord", "email"], "sessions": 2, "recent": True,
       "link": None, "events": [{"at": "2026-11-03T12:00:00Z", "event": "<img src=x onerror=alert(1)>signed in"}]}
 
@@ -89,16 +179,26 @@ def dom_of(browser, url, profile):
     if "headless-shell" not in browser:
         args.insert(1, "--headless=new")
     p = subprocess.run(args, capture_output=True, text=True, timeout=120)
+    DUMPS["last"] = p.stdout
     d = Dom()
     d.feed(p.stdout)
     return d
 
 
+def results_of(browser, url, profile):
+    """The JSON a test harness on the page wrote into <pre id="test-results">, or None."""
+    dom_of(browser, url, profile)
+    m = re.search(r'<pre id="test-results">(.*?)</pre>', DUMPS.get("last", ""), re.S)
+    return json.loads(html.unescape(m.group(1))) if m else None
+
+
 class Api:
-    """What the accounts service answers, by scenario: none (a static copy), out, in or linked."""
+    """What the accounts service answers, by scenario: none (a static copy), out, in, linked
+    (frozen), active (a usable link) or gone (the hint says signed in, the service does not)."""
     mode = "out"
     calls = []
     posts = []
+    deletes = 0
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -113,9 +213,25 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply(404, b"<html>Not Found</html>", "text/html")
         if self.path.startswith("/api/auth/browser/v1/config"):
             return self.reply(200, json.dumps(CONFIG).encode(), "application/json")
+        if self.path == "/api/me/items":
+            if Api.mode == "active":
+                items = dict(ITEMS, items=ITEMS["items"][1:] if Api.deletes > 1 else ITEMS["items"])
+                return self.reply(200, json.dumps(items).encode(), "application/json")
+            return self.reply(403, b'{"error": "link your game first"}', "application/json")
+        if self.path.startswith("/api/likes/counts?kind="):
+            counts = {P_MINE: 5, P_OTHER: 3} if "photo" in self.path else {}
+            return self.reply(200, json.dumps({"version": 1, "kind": "photo", "generated": 0, "counts": counts}).encode(),
+                              "application/json")
+        if self.path.startswith("/api/likes/mine?kind="):
+            if Api.mode == "active":
+                doc = {"kind": "photo", "liked": [P_OTHER], "own": [P_MINE], "counted": True}
+                return self.reply(200, json.dumps(doc).encode(), "application/json")
+            if Api.mode == "in":
+                return self.reply(403, b'{"error": "link your game first"}', "application/json")
+            return self.reply(401, b'{"detail": "Unauthorized"}', "application/json")
         if self.path.startswith("/api/me"):
-            if Api.mode in ("in", "linked"):
-                doc = dict(ME, link=LINKED if Api.mode == "linked" else None)
+            if Api.mode in ("in", "linked", "active"):
+                doc = dict(ME, link={"linked": LINKED, "active": ACTIVE}.get(Api.mode))
                 return self.reply(200, json.dumps(doc).encode(), "application/json")
             return self.reply(401, b'{"detail": "Unauthorized"}', "application/json")
         return self.reply(404, b'{"status": 404}', "application/json")
@@ -123,6 +239,15 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
         Api.posts.append((self.path, body))
+        if self.path == "/api/likes" and Api.mode == "active":
+            ok = self.headers.get("Content-Type") == "application/json" and "X-CSRFToken" in self.headers
+            doc = {"ok": True, "on": body.get("on"), "counted": True} if ok else {"error": "refused"}
+            return self.reply(200 if ok else 403, json.dumps(doc).encode(), "application/json")
+        if self.path == "/api/me/items/delete" and Api.mode == "active":
+            Api.deletes += 1
+            if Api.deletes == 1:
+                return self.reply(403, b'{"error": "sign in again"}', "application/json")
+            return self.reply(200, b'{"ok": true, "deleted": true}', "application/json")
         if self.path == "/api/link/peek" and Api.mode == "in":
             state = TOKENS.get(body.get("token"))
             if state is None:
@@ -223,6 +348,71 @@ def main():
                 d = dom_of(browser, base + "/" + page, profile)
                 check("Sign in" in [x.strip() for x in d.texts], page + ": the navbar says Sign in")
             check(Api.calls == [], "no other page calls /api/")
+
+            print("-- likes, for a visitor who signed in")
+            (site / "data").mkdir(exist_ok=True)
+            (site / "data" / "gallery.json").write_text(json.dumps({"version": 1, "generated": 0, "photos": [
+                photo(P_MINE, OWNER, "DriverA", 4), photo(P_OTHER, "f00dcafe1234", "<b>Other</b>", 2)]}))
+            (site / "likes-setup.js").write_text(SETUP)
+            (site / "likes-test.js").write_text(LIKES_TEST)
+            page = (site / "gallery.html").read_text(encoding="utf-8")
+            page = page.replace('<script src="likes.js"></script>',
+                                '<script src="likes-setup.js"></script>\n<script src="likes.js"></script>')
+            page = page.replace('<script src="photos.js"></script>',
+                                '<script src="photos.js"></script>\n<script src="likes-test.js"></script>')
+            (site / "likes-test.html").write_text(page, encoding="utf-8")
+            Api.mode, Api.posts, Api.calls = "active", [], []
+            r = results_of(browser, base + "/likes-test.html", profile) or {}
+            before, after = r.get("before") or {}, r.get("after") or {}
+            check(before.get(P_MINE) == {"tag": "span", "pressed": None, "text": "5", "href": None, "own": True},
+                  "linked: the key's own photo has its live total and no button")
+            check(before.get(P_OTHER) == {"tag": "button", "pressed": "true", "text": "3", "href": None, "own": False},
+                  "linked: a photo the key liked has a pressed thumbs-up and the live total")
+            check(Api.posts == [("/api/likes", {"kind": "photo", "item": P_OTHER, "on": False})],
+                  "a click takes the like back (POST /api/likes, JSON, with the CSRF header)")
+            check((after.get(P_OTHER) or {}).get("pressed") == "false" and (after.get(P_OTHER) or {}).get("text") == "2",
+                  "and the button and the total follow")
+            check(sorted(set(c.split("?")[0] for c in Api.calls)) == ["/api/auth/browser/v1/config", "/api/likes/counts",
+                                                                     "/api/likes/mine"],
+                  "the page asked for this visitor's likes and the totals once each (and the CSRF cookie)")
+            Api.mode = "in"
+            r = results_of(browser, base + "/likes-test.html", profile) or {}
+            other = (r.get("before") or {}).get(P_OTHER) or {}
+            check(other.get("tag") == "a" and other.get("href") == "account.html" and other.get("text") == "3",
+                  "not linked: the live total, as a link to the account page")
+            Api.mode = "gone"
+            r = results_of(browser, base + "/likes-test.html", profile) or {}
+            other = (r.get("before") or {}).get(P_OTHER) or {}
+            check(other.get("tag") == "a" and other.get("text") == "3" and r.get("hint") is None,
+                  "signed out since: a link to sign in, and the hint is gone")
+
+            print("-- My items")
+            (site / "data" / "designs.json").write_text(json.dumps({"version": 1, "generated": 0, "designs": []}))
+            (site / "photos").mkdir(exist_ok=True)  # a 1x1 picture as the public photo's thumbnail
+            (site / "photos" / f"{P_MINE}-thumb.jpg").write_bytes(base64.b64decode(
+                "R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="))
+            (site / "items-test.js").write_text(ITEMS_TEST)
+            page = (site / "account.html").read_text(encoding="utf-8")
+            page = page.replace('<script src="account.js"></script>',
+                                '<script src="likes-setup.js"></script>\n<script src="account.js"></script>\n'
+                                '<script src="items-test.js"></script>')
+            (site / "items-test.html").write_text(page, encoding="utf-8")
+            Api.mode, Api.posts, Api.deletes = "active", [], 0
+            r = results_of(browser, base + "/items-test.html", profile) or {}
+            rows = r.get("rows") or []
+            check(r.get("shown") and len(rows) == 3, "a linked account lists its game's 3 photos and designs")
+            check(rows and rows[0]["text"] == "<i>Mine</i>Photo \u00b7 On the site \u00b7 5 likes"
+                  and rows[0]["img"] == f"photos/{P_MINE}-thumb.jpg", "with the title as text, its state, likes and thumbnail")
+            check(len(rows) == 3 and rows[1]["img"] is None and "Held for the maintainer" in rows[1]["text"]
+                  and "Untitled" in rows[1]["text"] and "Waiting for the automatic check" in rows[2]["text"],
+                  "a held photo and a pending design: their state, no thumbnail")
+            check(r.get("profile") == f"profile.html?p={OWNER}", "a link to the player's public page, from the site's data")
+            check("count in the public totals once" in (r.get("note") or ""), "it says the key's likes do not count yet")
+            check(r.get("reauth") is True, "a delete without a recent sign-in asks for one")
+            check(Api.posts[:2] == [("/api/me/items/delete", {"kind": "photo", "id": P_MINE})] * 2,
+                  "Delete sends the item (after the confirm)")
+            check("is deleted" in (r.get("message") or "") and len(r.get("after") or []) == 2,
+                  "a delete that worked says so and the list follows")
         finally:
             httpd.shutdown()
     finally:

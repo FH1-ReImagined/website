@@ -623,3 +623,39 @@ nav a.nav-cta[aria-current="page"] { color: #1a0f33; text-decoration: none; box-
   .account-facts { grid-template-columns: 1fr; gap: 2px; }
   .account-facts dd { margin-bottom: 8px; }
 }
+
+/* ---- likes (likes.js) on the photos and designs, a player's page (profile.html), My items ---- */
+.shots.photos li { display: flex; flex-direction: column; min-width: 0; }
+/* With its footer, the whole item is the card; the picture zooms inside it. */
+.shots.photos li.has-foot { border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+.shots.photos li.has-foot > button { border: 0; border-radius: 0; box-shadow: none; }
+.shots.photos li.has-foot > button:hover, .shots.photos li.has-foot > button:focus-visible { transform: none; outline-offset: -2px; }
+.shots.photos li.has-foot > button:hover img { transform: scale(1.04); }
+.shots.photos li.has-foot img { transition: transform .2s; }
+.photo-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; padding: 0 11px 9px; font-size: 13px; }
+.photo-foot:has(> .like-slot:empty:only-child) { display: none; }
+.photo-by { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-weight: 600; text-decoration: none; }
+.photo-by:hover, .design-by a:hover { color: var(--orange); text-decoration: underline; }
+.design-by a { color: #e6dcff; font-weight: 700; text-decoration: none; }
+.like-slot { margin-left: auto; }
+.like-slot:empty { display: none; }
+.like { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 13px; font-weight: 700; line-height: 1; color: #e6dcff; background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; text-decoration: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.like svg { width: 14px; height: 14px; fill: currentColor; }
+button.like { cursor: pointer; }
+button.like:hover, a.like:hover { border-color: var(--orange); color: var(--cream); }
+button.like[aria-pressed="true"] { color: #1a0f33; background: linear-gradient(90deg, var(--orange), var(--pink)); border-color: transparent; }
+button.like:disabled { opacity: .6; cursor: progress; }
+.like.own { color: var(--muted); }
+.like-note { position: fixed; z-index: 30; left: 50%; bottom: 20px; transform: translateX(-50%); width: max-content; max-width: min(92vw, 520px); margin: 0; padding: 10px 16px; border-radius: 12px; background: var(--tip-bg, rgba(20, 13, 46, .96)); border: 1px solid var(--border); color: var(--cream); font-size: 14.5px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.like-note[hidden] { display: none; }
+.profile-section { margin: 0 0 32px; }
+.profile-section[hidden] { display: none; }
+.profile-section h2 { color: var(--cream); margin: 0 4px 12px; }
+.profile-note { margin-top: 24px; }
+.item-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.item-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.item-list img { width: 96px; height: 54px; object-fit: cover; border-radius: 8px; background: rgba(255, 255, 255, .05); flex: none; }
+.item-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.item-body b { color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-body span { color: var(--muted); font-size: 14px; }
+.item-list .btn { padding: 8px 14px; flex: none; }

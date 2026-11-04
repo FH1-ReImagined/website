@@ -5,6 +5,9 @@
 // online.html shows the newest (data-designs="3") and keeps its section hidden while there are
 // none. Each card has the share code that finds the design in the storefront, and a copy button.
 // Titles, gamertags and car names are the players' own text: they go in with textContent only.
+// Each card has its likes (likes.js), and the creator's gamertag links to their profile page
+// (profile.html?p=<owner>, the player id the server publishes). A list with data-designs-owner (the
+// profile page) shows only the designs of the player its address names, newest first.
 (function () {
   "use strict";
 
@@ -19,6 +22,8 @@
   function text(v) { return typeof v === "string" ? v : ""; }
   function num(v, max) { return typeof v === "number" && isFinite(v) && v >= 0 && v <= max; }
   function size(v) { return num(v, 100000) && v > 0 ? Math.round(v) : 0; }
+  function owner(d) { return /^[0-9a-f]{12}$/.test(text(d.owner)) ? d.owner : ""; }
+  var wanted = owner({ owner: new URLSearchParams(location.search).get("p") });
   function usable(d) {
     return d && /^[A-Za-z0-9]{6,32}$/.test(text(d.id)) && Object.prototype.hasOwnProperty.call(KIND, d.type) &&
       /^[A-Za-z0-9]{4,15}$/.test(text(d.code)) && d.src === "designs/" + d.id + ".png" && text(d.gamertag) &&
@@ -60,7 +65,13 @@
     body.append(el("b", title || "Untitled", "design-title"));
     if (car) body.append(el("span", car, "design-car"));
     var by = el("span", "by ", "design-by");
-    by.append(el("b", tag));
+    if (owner(d)) {
+      var who = el("a", tag);
+      who.href = "profile.html?p=" + owner(d);
+      by.append(who);
+    } else {
+      by.append(el("b", tag));
+    }
     body.append(by);
 
     var stats = el("p", "", "design-stats");
@@ -77,6 +88,7 @@
       stats.append(el("span", "No ratings yet", "rating none"));
     }
     stats.append(el("span", count(d.downloads, "download", "downloads"), "downloads"));
+    if (window.FHLikes) stats.append(window.FHLikes.slot("design", d.id, d.likes));
     body.append(stats);
 
     var share = el("div", "", "design-code");
@@ -98,7 +110,10 @@
     var q = filter ? fold(filter.value.trim()) : "";
     lists.forEach(function (list) {
       var type = list.dataset.designsType, n = parseInt(list.dataset.designs, 10);
-      var mine = designs.filter(function (d) { return !type || d.type === type; });
+      var byOwner = list.hasAttribute("data-designs-owner");
+      var mine = designs.filter(function (d) {
+        return (!type || d.type === type) && (!byOwner || (wanted && owner(d) === wanted));
+      });
       var shown = type ? mine.filter(function (d) { return matches(d, q); }).sort(order)
         : mine.sort(SORTS.newest).slice(0, n > 0 ? n : mine.length);
       list.replaceChildren.apply(list, shown.map(function (d) { return card(d, !type); }));
@@ -119,6 +134,7 @@
       var n = designs.filter(function (d) { return d.type === c.dataset.designsCount; }).length;
       c.textContent = n ? n.toLocaleString("en") : "";
     });
+    if (window.FHLikes) window.FHLikes.fill(document);
     document.dispatchEvent(new Event("designs:shown"));
   }
 
