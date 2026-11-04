@@ -4,13 +4,18 @@ SYNTHETIC, drawn here with Pillow at test time: never commit a screenshot of the
 other image from it, to this repository.
 
 Checks what a build publishes: newest approved first, only the fields the pages show (no "xuid"
-or "owner" anywhere in the output), JPEGs without metadata, the size limits, the files it must
+anywhere in the output, and an "owner" only as the server's 12-hex-digit player id: a XUID or
+anything else in its place is dropped), the like totals from a stand-in for the accounts
+service's /api/likes/counts (ids and counts checked; no totals, and no failure, when it is unset,
+down or broken), JPEGs without metadata, the size limits, the files it must
 refuse (a SHA-256 mismatch, other formats, pixel bombs, oversized, broken or animated files,
 images on another host), the cache (a second build downloads nothing; a withdrawn photo leaves
 the site and the cache), the cap, and an unset, unreachable or broken feed. Then, in a headless
 Chrome or Chromium (CHROME=path, else one on PATH or Playwright's): the front page shows the 3
 newest photos with the players' text as text, gallery.html lists them all, and with an empty
-gallery the front page hides its photos section.
+gallery the front page hides its photos section; each photo shows its like total (a link to sign
+in, with no call to /api/) and a link to its owner's page, and profile.html?p=<owner> lists that
+player's photos only, with their gamertag and totals.
 
   python3 tools/test_build_gallery.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_gallery.py --serve 8000   # then serve the fixture site for a look
@@ -47,6 +52,7 @@ import check_site  # noqa: E402
 
 NOW = int(time.time())
 LEAK = "2535411122223333"  # a made-up XUID the feed leaks by mistake
+OWNER_A, OWNER_B = "0a1b2c3d4e5f", "f00dcafe1234"  # player ids, as the server publishes them
 
 failures = []
 
@@ -131,16 +137,20 @@ def fixtures():
     weird_title = "Two\nlines \u202eand a bidi override\t"
     long_title = "A very long title " * 12
     good = {
-        "hd": add("hd", jpeg(scene(2560, 1440, 2, "Synthetic HD photo")), NOW - 100, "Sunset over the ridge", "Synthetic One"),
+        "hd": add("hd", jpeg(scene(2560, 1440, 2, "Synthetic HD photo")), NOW - 100, "Sunset over the ridge", "Synthetic One",
+                  owner=OWNER_A),
         "png": add("png", png(scene(1280, 720, 3, "Synthetic PNG photo").convert("RGBA"),
-                              pnginfo=_pnginfo()), NOW - 200, "PNG, not JPEG", "Synthetic Two"),
+                              pnginfo=_pnginfo()), NOW - 200, "PNG, not JPEG", "Synthetic Two", owner=OWNER_B),
         "meta": add("meta", jpeg_with_metadata(scene(1280, 720, 4, "Synthetic photo with metadata")), NOW - 300,
                     '<img src=x onerror="alert(1)"> & "quotes"', "<b>Tag</b>", car="Synthetic GT",
                     location="Nowhere Ridge", xuid=LEAK, owner=LEAK, ownerXuid=LEAK),
-        "weird": add("weird", jpeg(scene(1280, 720, 5, "Synthetic photo 4")), NOW - 400, weird_title, "Synthetic Four"),
-        "long": add("long", jpeg(scene(1280, 720, 6, "Synthetic photo 5")), NOW - 500, long_title, "Synthetic Five"),
+        "weird": add("weird", jpeg(scene(1280, 720, 5, "Synthetic photo 4")), NOW - 400, weird_title, "Synthetic Four",
+                     owner=OWNER_A.upper()),
+        "long": add("long", jpeg(scene(1280, 720, 6, "Synthetic photo 5")), NOW - 500, long_title, "Synthetic One Again",
+                    owner=OWNER_A),
         "notitle": add("notitle", jpeg(scene(1280, 720, 7, "Synthetic photo 6")), NOW - 600, "", "Synthetic Six"),
-        "seven": add("seven", jpeg(scene(1280, 720, 8, "Synthetic photo 7")), NOW - 700, "Dusk run", "Synthetic Seven"),
+        "seven": add("seven", jpeg(scene(1280, 720, 8, "Synthetic photo 7")), NOW - 700, "Dusk run", "Synthetic Seven",
+                     owner=OWNER_A + "0"),
         "same": add("same", jpeg(scene(1280, 720, 8, "Synthetic photo 7")), NOW - 800, "Same file, another id", "Synthetic Eight"),
     }
     # The files to refuse are older than the good ones, so the cap test keeps good ones.
@@ -174,7 +184,10 @@ def fixtures():
     hd = next(e for e in entries if isinstance(e, dict) and e["id"] == good["hd"])
     entries.append(dict(hd, title="Duplicate id"))  # after the original: refused
     order = [good[k] for k in ("hd", "png", "meta", "weird", "long", "notitle", "seven", "same")]
-    expect = {"good": good, "bad": bad, "weird_title": "Two lines and a bidi override",
+    likes = {good["hd"]: 12, good["png"]: 1, good["long"]: 3, good["seven"]: -4, good["same"]: True,
+             good["notitle"]: 10 ** 10, "../../etc/pw": 5, "xuid" + LEAK: 7}
+    owners = {good["hd"]: OWNER_A, good["png"]: OWNER_B, good["long"]: OWNER_A}
+    expect = {"good": good, "bad": bad, "likes": likes, "owners": owners, "weird_title": "Two lines and a bidi override",
               "long_title": long_title[:80], "meta_title": '<img src=x onerror="alert(1)"> & "quotes"'}
     return entries, files, order, expect
 
@@ -193,6 +206,10 @@ class Feed:
     def __init__(self):
         self.doc = {"version": 1, "generated": NOW, "photos": []}
         self.raw = None          # bytes served instead of the doc (a broken feed)
+        self.likes = {}          # the accounts service's public totals of photos
+        self.likes_raw = None    # bytes served instead of them
+        self.likes_status = 200
+        self.likes_requests = []
         self.files = {}
         self.requests = collections.Counter()   # image path -> requests
         self.fail_images = False
@@ -215,6 +232,11 @@ class FeedHandler(SimpleHTTPRequestHandler):
         if self.path == "/community/gallery.json":
             body = f.raw if f.raw is not None else json.dumps(f.doc).encode()
             return self.reply(200, body, "application/json")
+        if self.path.startswith("/api/likes/counts"):
+            f.likes_requests.append(self.path)
+            body = f.likes_raw if f.likes_raw is not None else json.dumps(
+                {"version": 1, "kind": "photo", "generated": NOW, "counts": f.likes}).encode()
+            return self.reply(f.likes_status, body, "application/json")
         if self.path.startswith("/community/img/"):
             f.requests[self.path] += 1
             if f.fail_images:
@@ -242,14 +264,23 @@ def serve_dir(path):
 
 
 class QuietFiles(SimpleHTTPRequestHandler):
+    api_calls = []
+
     def log_message(self, *a):
         pass
+
+    def do_GET(self):
+        if self.path.startswith("/api/"):
+            QuietFiles.api_calls.append(self.path)
+        return super().do_GET()
 
 
 # ---- running the build ----
 
-def build(site, cache, feed_url, *extra):
-    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_ACTIONS",)}
+def build(site, cache, feed_url, *extra, likes_url=None):
+    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_ACTIONS", "LIKES_URL")}
+    if likes_url:
+        env["LIKES_URL"] = likes_url
     out_file = site.parent / "github_output"
     out_file.write_text("")
     env["GITHUB_OUTPUT"] = str(out_file)
@@ -295,9 +326,18 @@ def check_published(site, order, expect, log):
     for f in output_files(site):
         data = f.read_bytes()
         text = data if f.suffix == ".json" else check_site.jpeg_segments(data)[3]
-        if LEAK.encode() in data or any(w in text.lower() for w in (b"xuid", b"owner")):
+        if LEAK.encode() in data or b"xuid" in text.lower() or (f.suffix != ".json" and b"owner" in text.lower()):
             leaks.append(f.name)
-    check(not leaks, f"no 'xuid', 'owner' or the leaked XUID anywhere in the output {leaks or ''}")
+    check(not leaks, f"no 'xuid' or the leaked XUID anywhere in the output, no 'owner' in a JPEG {leaks or ''}")
+    check({p["id"]: p["owner"] for p in photos if "owner" in p} == expect["owners"],
+          "owner: only the server's player ids (a XUID, upper case or a longer id is dropped)")
+    if "likes" in expect:
+        want = {i: (n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10 ** 9 else 0)
+                for i, n in expect["likes"].items() if i in by}
+        check({p["id"]: p.get("likes") for p in photos} == {i: want.get(i, 0) for i in by},
+              "likes: every photo has its total (0 when none; bad ids and counts left out)")
+    else:
+        check(not any("likes" in p for p in photos), "no like totals in the output")
     m = by.get(good["meta"], {})
     check(m.get("title") == expect["meta_title"] and m.get("gamertag") == "<b>Tag</b>",
           "player text kept as written (not escaped)")
@@ -378,6 +418,12 @@ def check_pages(browser, site, order, expect, profile):
         index = dom_of(browser, base + "/index.html", profile)
         section = next((a for t, a in index.tags if t == "section" and a.get("id") == "photos"), None)
         check(section is not None and "hidden" not in section, "front page: the photos section is shown")
+        QuietFiles.api_calls.clear()
+        likes = [a for t, a in index.tags if t == "a" and "like" in a.get("class", "").split()]
+        check(len(likes) == 3 and all(a.get("href") == "account.html" for a in likes),
+              "front page: a like total on each photo, a link to sign in for a visitor who did not")
+        by = {a.get("href") for t, a in index.tags if t == "a" and a.get("class") == "photo-by"}
+        check(f"profile.html?p={OWNER_A}" in by, "front page: the owner's gamertag links to their page")
         shown = [a["data-full"] for t, a in index.tags if t == "button" and a.get("data-full", "").startswith("photos/")]
         check(shown == [f"photos/{i}.jpg" for i in order[:3]], "front page: the 3 newest photos, in order")
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in index.tags),
@@ -393,6 +439,23 @@ def check_pages(browser, site, order, expect, profile):
         page = dom_of(browser, base + "/gallery.html", profile)
         listed = [a["data-full"] for t, a in page.tags if t == "button" and a.get("data-full", "").startswith("photos/")]
         check(listed == [f"photos/{i}.jpg" for i in order], f"gallery.html: all {len(order)} photos, newest first")
+        hd = expect["good"]["hd"]
+        check(any(t == "a" and a.get("aria-label", "").startswith("12 likes") for t, a in page.tags) and "12" in
+              [x.strip() for x in page.texts], f"gallery.html: the photo with 12 likes says so ({hd})")
+        check(QuietFiles.api_calls == [], "the pages make no call to /api/ for a visitor who did not sign in")
+
+        prof = dom_of(browser, base + f"/profile.html?p={OWNER_A}", profile)
+        listed = [a["data-full"] for t, a in prof.tags if t == "button" and a.get("data-full", "").startswith("photos/")]
+        mine = [i for i in order if expect["owners"].get(i) == OWNER_A]
+        check(listed == [f"photos/{i}.jpg" for i in mine], "profile.html: only that player's photos, newest first")
+        check("Synthetic One" in [x.strip() for x in prof.texts], "profile.html: their gamertag, from their newest photo")
+        check(any("2 photos" in x and "0 designs" in x and "15 likes" in x for x in prof.texts),
+              "profile.html: how many photos, designs and likes")
+        check(not any(t == "a" and a.get("class") == "photo-by" for t, a in prof.tags),
+              "profile.html: no link to the page it is on")
+        prof = dom_of(browser, base + "/profile.html?p=XUID" + LEAK, profile)
+        check(not any(t == "button" and a.get("data-full") for t, a in prof.tags)
+              and any("no such player" in x for x in prof.texts), "profile.html: an id that is not a player id shows nothing")
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in page.tags),
               "gallery.html: the player's markup is not turned into elements")
 
@@ -430,8 +493,10 @@ def main():
         site, cache = tmp / "site", tmp / "cache"
         assemble(site)
 
+        feed.likes = expect["likes"]
         print("-- a build with the fixture feed")
-        rc, log, outputs = build(site, cache, feed_url)
+        rc, log, outputs = build(site, cache, feed_url, likes_url=feed.url)
+        check(feed.likes_requests == ["/api/likes/counts?kind=photo"], "the like totals are asked for once, for photos")
         check(rc == 0, "the build exits 0")
         check_published(site, order, expect, log)
         unique = len({e["sha256"] for e in entries if isinstance(e, dict) and e.get("id") in order})
@@ -442,6 +507,21 @@ def main():
         r = subprocess.run([sys.executable, str(TOOLS / "check_site.py"), str(site)], capture_output=True, text=True)
         check(r.returncode == 0, f"check_site.py passes on the built site: {r.stdout.strip()}")
         first = {f.name: f.read_bytes() for f in output_files(site)[1:]}
+
+        print("-- the like totals unset, down or broken: no totals, and the build goes on")
+        saved = expect.pop("likes")
+        for what, status, raw, url in (("unset", 200, None, None), ("HTTP 503", 503, None, feed.url),
+                                       ("not JSON", 200, b"<html>", feed.url),
+                                       ("another kind", 200, json.dumps({"version": 1, "kind": "design", "counts": {}}).encode(), feed.url),
+                                       ("a URL with a query", 200, None, feed.url + "/api/likes/counts?kind=design")):
+            feed.likes_status, feed.likes_raw = status, raw
+            rc, log, _ = build(site, cache, feed_url, "--require-feed", likes_url=url)
+            check(rc == 0, f"likes {what}: exit 0, even with --require-feed")
+            check_published(site, order, expect, log)
+        feed.likes_status, feed.likes_raw = 200, None
+        expect["likes"] = saved
+        rc, log, outputs = build(site, cache, feed_url, likes_url=feed.url + "/api/likes/counts")
+        check(rc == 0 and gallery(site)["photos"][0].get("likes") == 12, "LIKES_URL may name /api/likes/counts itself")
 
         print("-- the same feed again")
         path = {e["id"]: e["image"] for e in entries if isinstance(e, dict)}
@@ -506,7 +586,7 @@ def main():
         feed.doc["photos"], feed.fail_images = entries, False
 
         print("-- the pages, in a browser")
-        rc, log, _ = build(site, cache, feed.url)
+        rc, log, _ = build(site, cache, feed.url, likes_url=feed.url)
         browser = find_browser()
         if browser:
             print(f"     {browser}")
@@ -519,7 +599,7 @@ def main():
 
         print(f"\n{len(failures)} failed" if failures else "\nall passed")
         if args.serve:
-            build(site, cache, feed.url)
+            build(site, cache, feed.url, likes_url=feed.url)
             print(f"serving the fixture site on http://127.0.0.1:{args.serve}/ (Ctrl-C to stop)", flush=True)
             handler = functools.partial(QuietFiles, directory=str(site))
             try:

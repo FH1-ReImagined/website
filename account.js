@@ -13,6 +13,10 @@
 // then confirms the account id in the launcher, and the page follows the request until it is
 // linked or declined. A code typed in the form (from the launcher, on another device) works the
 // same way.
+// A linked account sees its game's photos and designs (/api/me/items) in every state, with their
+// likes, and can delete them (/api/me/items/delete, after a sign-in in the past 10 minutes). The
+// link to the player's public page (profile.html?p=<owner>) comes from the site's own data
+// files: the accounts service never knows that id.
 (function () {
   "use strict";
 
@@ -46,6 +50,13 @@
     "too many tries": "Too many tries. Wait 10 minutes.",
     "codes are paused": "Codes are paused for a few minutes. Use the link the launcher opened in your browser, or try again later."
   };
+  var ITEM_STATES = {
+    live: "On the site",
+    pending: "Waiting for the automatic check",
+    held: "Held for the maintainer to check",
+    hidden: "Hidden"
+  };
+  var ITEM_KINDS = { photo: "Photo", design: "Design" };
   var GAME_STATES = {
     frozen: "This link is on hold: your game's key changed. The maintainer checks such links; ask on Discord.",
     waiting: "The public server has not seen your game for a long time. Play online once and the link works again.",
@@ -169,6 +180,108 @@
     note.hidden = !note.textContent;
     document.getElementById("game-actions").hidden = !link;
     document.getElementById("unlink-reauth").hidden = true;
+    if (link && link.state === "active") {
+      loadItems(link);
+    } else {
+      document.getElementById("items").hidden = true;
+    }
+  }
+
+  // ---- the game's photos and designs ----
+
+  function thumbOf(item) {
+    if (!item.public) return "";
+    return item.kind === "photo" ? "photos/" + item.id + "-thumb.jpg" : "designs/" + item.id + ".png";
+  }
+
+  function profileLink(items) {
+    var mine = {};
+    items.forEach(function (i) { if (i.public) mine[i.kind + ":" + i.id] = true; });
+    var p = document.getElementById("items-profile");
+    p.hidden = true;
+    if (!Object.keys(mine).length) return;
+    function find(path, field, kind) {
+      return fetch(path, { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (doc) {
+          var list = doc && Array.isArray(doc[field]) ? doc[field] : [];
+          var hit = list.filter(function (i) { return i && mine[kind + ":" + i.id] && /^[0-9a-f]{12}$/.test(i.owner || ""); })[0];
+          return hit ? hit.owner : null;
+        }, function () { return null; });
+    }
+    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design")])
+      .then(function (r) {
+        var owner = r[0] || r[1];
+        if (!owner) return;
+        document.getElementById("items-profile-link").href = "profile.html?p=" + owner;
+        p.hidden = false;
+      });
+  }
+
+  function showItems(doc) {
+    var box = document.getElementById("items");
+    var list = document.getElementById("items-list");
+    var items = Array.isArray(doc.items) ? doc.items : [];
+    list.textContent = "";
+    items.forEach(function (item) {
+      var li = document.createElement("li");
+      var src = thumbOf(item);
+      if (src) {
+        var img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        img.loading = "lazy";
+        img.addEventListener("error", function () { img.remove(); });  // not on the site yet
+        li.appendChild(img);
+      }
+      var body = document.createElement("div");
+      body.className = "item-body";
+      body.appendChild(text("b", item.title || "Untitled"));
+      var facts = [ITEM_KINDS[item.kind] || item.kind, ITEM_STATES[item.state] || item.state];
+      if (item.public) facts.push(item.likes === 1 ? "1 like" : (item.likes || 0).toLocaleString("en") + " likes");
+      body.appendChild(text("span", facts.join(" · ")));
+      li.appendChild(body);
+      var del = text("button", "Delete", "btn ghost danger");
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete the " + (item.kind === "photo" ? "photo " : "design ") + (item.title || item.id));
+      del.addEventListener("click", function () { deleteItem(item); });
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+    document.getElementById("items-empty").hidden = items.length > 0;
+    var note = document.getElementById("items-note");
+    note.textContent = doc.counted ? "" : "Your likes are saved, and count in the public totals once your game has played online on 2 days, 72 hours after its first online sign-in.";
+    note.hidden = !note.textContent;
+    box.hidden = false;
+    profileLink(items);
+  }
+
+  function loadItems() {
+    return call("GET", "/api/me/items").then(function (r) {
+      if (r.status === 200 && r.doc) showItems(r.doc);
+      else document.getElementById("items").hidden = true;
+    });
+  }
+
+  function deleteItem(item) {
+    var what = (item.kind === "photo" ? "photo" : "design") + (item.title ? " “" + item.title + "”" : "");
+    if (!window.confirm("Delete your " + what + "? It is removed from the website" +
+                        (item.kind === "design" ? " and the game's storefront" : "") + ", with its likes. This cannot be undone.")) return;
+    document.getElementById("items-reauth").hidden = true;
+    call("POST", "/api/me/items/delete", { kind: item.kind, id: item.id }).then(function (r) {
+      if (r.status === 200) {
+        say("Your " + what + " is deleted. It leaves the site's pages at their next update.");
+        loadItems();
+      } else if (r.status === 403 && r.doc && r.doc.error === "sign in again") {
+        document.getElementById("items-reauth").hidden = false;
+      } else if (r.status === 404) {
+        say("That one is already gone.");
+        loadItems();
+      } else if (r.status === 429) {
+        say("Too many deletions today. Try again tomorrow.", true);
+      } else {
+        say("It could not be deleted. Try again later.", true);
+      }
+    });
   }
 
   // ---- linking the game ----

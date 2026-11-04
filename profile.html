@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
+<title>Player - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="A player's community photos and shared designs in Forza Horizon 1: ReImagined, with their likes.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://forza.dyotson.dev/profile.html">
+<meta name="theme-color" content="#140d2e">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#profile">Skip to the player's photos and designs</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars" style="--stars:.7"></div>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html">Horizon World</a>
+          <a href="leaderboards.html">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="designs.html">Designs</a>
+          <a href="press.html">Press</a>
+          <a href="faq.html">FAQ</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+    <a class="nav-account" href="account.html">Sign in</a>
+  </nav>
+</header>
+
+<main class="board-page gallery-page profile-page" id="profile">
+  <div class="page-head">
+    <p class="kicker">Community &middot; Player</p>
+    <h1><span class="h1-big" id="profile-name">Player</span></h1>
+    <p class="aside" id="profile-summary" role="status">Loading...</p>
+  </div>
+
+  <section class="profile-section" data-photos-section id="profile-photos" aria-labelledby="profile-photos-h" hidden>
+    <h2 id="profile-photos-h">Photos</h2>
+    <ul class="shots photos all" data-photos="all" data-photos-owner aria-label="Photos"></ul>
+  </section>
+
+  <section class="profile-section" data-designs-section id="profile-designs" aria-labelledby="profile-designs-h" hidden>
+    <h2 id="profile-designs-h">Designs</h2>
+    <ul class="designs all" data-designs="all" data-designs-owner aria-label="Designs"></ul>
+  </section>
+
+  <noscript><p class="photo-state error">This page needs JavaScript.</p></noscript>
+  <p class="aside profile-note">A player's page shows what they shared and the likes it got, all of it public on this site already. It says nothing about their website account.</p>
+</main>
+
+<footer>
+  <p>The photos and designs were made and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+  <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+</footer>
+
+<dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>
+<script src="nav.js"></script>
+<script src="likes.js"></script>
+<script src="photos.js"></script>
+<script src="designs.js"></script>
+<script src="profile.js"></script>
+</body>
+</html>

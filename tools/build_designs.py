@@ -3,7 +3,8 @@
 assembled site, with their previews re-encoded here: no file the server sends is published as
 it is.
 
-  GALLERY_FEED_URL=URL tools/build_designs.py OUT [--cache DIR] [--max-designs N] [--require-feed]
+  GALLERY_FEED_URL=URL [LIKES_URL=URL] tools/build_designs.py OUT [--cache DIR] [--max-designs N]
+      [--require-feed]
 
 The designs come from the same Forza Live server as the community photos (tools/build_gallery.py):
 GALLERY_FEED_URL is http://host:port, or its /community/gallery.json, and the designs feed is
@@ -14,7 +15,9 @@ re-encoded as a PNG from its pixels alone, without any metadata: OUT/designs/<id
 576 px wide; the game's previews are 288x160 for paint jobs and 256x128 for vinyl groups, and a
 transparent background stays transparent). OUT/data/designs.json lists them, newest first, with
 only what the pages show (designs.js): never a XUID or the design itself, and no description.
-The pages insert the text with textContent, so nothing is escaped here.
+The pages insert the text with textContent, so nothing is escaped here. Each design keeps its
+creator's player id ("owner", as the photos do) and gets its like total ("likes") from
+LIKES_URL (?kind=design), as tools/build_gallery.py says.
 
 The cache (DIR, kept between runs by actions/cache in .github/workflows/pages.yml) holds the
 re-encoded previews under the SHA-256 of the server's file, and a note for each file that failed
@@ -45,7 +48,8 @@ from PIL import Image
 
 # The download, the text cleaning and the cache bookkeeping are the photos' (it also sets
 # Pillow's pixel limit and turns its decompression-bomb warning into an error).
-from build_gallery import Refused, Unreachable, clean_text, fetch, is_int, prune_cache, write_atomic
+from build_gallery import (Refused, Unreachable, clean_text, fetch, is_int, owner_of, prune_cache, read_likes,
+                           write_atomic)
 
 TYPES = ("livery", "vinylgroup")
 MAX_DESIGNS = 500                    # the newest; older ones are dropped (and logged)
@@ -124,6 +128,9 @@ def entry_of(raw):
     e = {"id": did, "type": kind, "code": code, "title": clean_text(raw.get("title"), TEXT_LIMITS["title"]) or "",
          "gamertag": gamertag, "downloads": count_of(raw, "downloads"), "rating": rating, "ratings": ratings,
          "createdAt": raw["createdAt"], "sha256": sha.lower(), "preview": preview}
+    owner = owner_of(raw)
+    if owner:
+        e["owner"] = owner
     car = raw.get("car")
     if kind == "livery" and isinstance(car, dict):   # a paint job fits one car; a vinyl group any
         name = clean_text(car.get("name"), TEXT_LIMITS["car"])
@@ -268,6 +275,7 @@ def main():
         warn(f"the feed {url} could not be read ({e}): no designs")
         return 0
     log(f"feed {url}: {len(raw)} designs")
+    likes = read_likes("design", ID_RE, warn)
 
     origin = urlsplit(url)[:2]
     entries, ids, codes, refused = [], set(), set(), 0
@@ -333,8 +341,11 @@ def main():
         if args.cache:
             keep.add(cache_path(args.cache, sha).name)
         d = {"id": did, "type": e["type"], "code": e["code"], "title": e["title"], "gamertag": e["gamertag"]}
-        if "car" in e:
-            d["car"] = e["car"]
+        for key in ("owner", "car"):
+            if key in e:
+                d[key] = e[key]
+        if likes is not None:
+            d["likes"] = likes.get(did, 0)
         d.update(downloads=e["downloads"], rating=e["rating"], ratings=e["ratings"], createdAt=e["createdAt"],
                  src=f"designs/{did}.png", w=w, h=h)
         designs.append(d)
