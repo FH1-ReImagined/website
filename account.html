@@ -65,6 +65,17 @@
   <noscript><p class="account-state error">Signing in needs JavaScript.</p></noscript>
   <p class="notice" id="account-message" role="alert" hidden></p>
 
+  <section class="panel" id="link-panel" aria-labelledby="link-h" hidden>
+    <h2 id="link-h">Link your game</h2>
+    <p id="link-question"></p>
+    <p class="aside" id="link-replaces" hidden></p>
+    <p class="aside" id="link-signin" hidden>Sign in below first: the link goes to the account you sign in to.</p>
+    <div class="cta" id="link-buttons" hidden>
+      <button type="button" class="btn primary" id="link-claim">Link</button>
+      <button type="button" class="btn ghost" id="link-dismiss">Not now</button>
+    </div>
+  </section>
+
   <section class="panel" id="signin" aria-labelledby="signin-h" hidden>
     <h2 id="signin-h">Sign in</h2>
     <p>Sign in with Discord, GitHub or an email address. Signing in the first time makes your account; there is no separate sign-up.</p>
@@ -111,8 +122,31 @@
       <dt>Created</dt><dd id="account-created"></dd>
       <dt>Signs in with</dt><dd id="account-methods"></dd>
       <dt>Signed in on</dt><dd id="account-sessions"></dd>
-      <dt>Your game</dt><dd>Not linked. Linking your game from the launcher comes in a later update; until then a website account can only browse.</dd>
+      <dt>Your game</dt><dd id="account-game"></dd>
     </dl>
+    <p class="aside" id="game-note" hidden></p>
+    <div class="cta" id="game-actions" hidden>
+      <button type="button" class="btn ghost" id="unlink">Unlink my game</button>
+    </div>
+    <p class="aside" id="unlink-reauth" hidden>For your safety, unlinking here needs a sign-in in the last 10 minutes. Sign out, sign in again, then unlink. Or unlink from the launcher.</p>
+
+    <div class="my-items" id="items" hidden>
+      <h3>Your photos and designs</h3>
+      <p class="aside" id="items-note" hidden></p>
+      <p class="aside" id="items-empty" hidden>Nothing yet. Photos you upload from photo mode (Big Shot) and designs you share from the storefront show up here.</p>
+      <ul class="item-list" id="items-list"></ul>
+      <p class="aside" id="items-profile" hidden><a id="items-profile-link" href="profile.html">Your public page</a> shows what is on the site, with its likes.</p>
+      <p class="aside" id="items-reauth" hidden>For your safety, deleting needs a sign-in in the last 10 minutes. Sign out, sign in again, then delete.</p>
+    </div>
+
+    <form class="email-form" id="link-code-form">
+      <label for="link-code">Have a link code from the launcher? Enter it here</label>
+      <p class="aside">In the launcher: Settings &gt; Online &gt; Website account &gt; Link to website account. It shows an 8-character code, such as K7M2-QXPA, that works for 10 minutes.</p>
+      <div class="field-row">
+        <input id="link-code" name="link-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="[2-9A-HJ-NP-Za-hj-np-z -]{8,10}" maxlength="10" required>
+        <button type="submit" class="btn ghost">Find my game</button>
+      </div>
+    </form>
     <div class="cta">
       <button type="button" class="btn ghost" id="logout">Sign out</button>
       <button type="button" class="btn ghost" id="logout-all">Sign out everywhere</button>
@@ -122,7 +156,7 @@
     <ul class="account-events" id="account-events"></ul>
 
     <h3>Delete your account</h3>
-    <p>Deleting your account removes it and everything the website keeps about it at once. Things you shared from the game (photos, designs) belong to your game, not to this account, and stay.</p>
+    <p>Deleting your account removes it and everything the website keeps about it at once, its game link and your game's likes included. Things you shared from the game (photos, designs) belong to your game, not to this account, and stay: delete them above first if you want them gone.</p>
     <p class="aside" id="delete-reauth" hidden>For your safety, deleting needs a sign-in in the last 10 minutes. Sign out, sign in again, then delete.</p>
     <button type="button" class="btn ghost danger" id="delete">Delete my account</button>
   </section>

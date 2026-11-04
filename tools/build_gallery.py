@@ -2,7 +2,8 @@
 """Copy the community photos a maintainer approved on the Forza Live server into the assembled
 site, re-encoded here: no file the server sends is published as it is.
 
-  GALLERY_FEED_URL=URL tools/build_gallery.py OUT [--cache DIR] [--max-photos N] [--require-feed]
+  GALLERY_FEED_URL=URL [LIKES_URL=URL] tools/build_gallery.py OUT [--cache DIR] [--max-photos N]
+      [--require-feed]
 
 GALLERY_FEED_URL is the server's public feed, http://host:port/community/gallery.json (or just
 http://host:port). Each photo the cache does not hold yet is downloaded from the feed's server,
@@ -11,6 +12,13 @@ and re-encoded without any metadata: OUT/photos/<id>.jpg (at most 1920 px wide, 
 and OUT/photos/<id>-thumb.jpg (at most 480 px wide). OUT/data/gallery.json lists them, newest
 approved first, with only what the pages show (photos.js). The pages insert the text with
 textContent, so nothing is escaped here.
+
+Each photo keeps its owner's player id ("owner": the opaque id the server's leaderboards publish,
+12 lower-case hex digits, never a XUID; anything else is dropped), for the profile pages
+(profile.html), and gets its like total ("likes") from the website accounts service's public
+totals, LIKES_URL (https://forza.dyotson.dev/api/likes/counts, or the site's origin; ?kind=photo
+is added). Without LIKES_URL, or when the totals cannot be read, the photos have no "likes" and
+the build goes on: the totals are not worth keeping a stale site for.
 
 The cache (DIR, kept between runs by actions/cache in .github/workflows/pages.yml) holds the
 re-encoded copies under the SHA-256 of the server's file, so the server sends each photo once,
@@ -63,6 +71,9 @@ warnings.simplefilter("error", Image.DecompressionBombWarning)
 
 ID_RE = re.compile(r"[A-Za-z2-7]{12}")
 SHA_RE = re.compile(r"[0-9a-fA-F]{64}")
+OWNER_RE = re.compile(r"[0-9a-f]{12}")   # the server's player id (a salted hash), never a XUID
+MAX_LIKES_BYTES = 4 << 20
+MAX_LIKES = 10 ** 9
 
 
 class Refused(Exception):
@@ -156,6 +167,9 @@ def entry_of(raw):
     if not is_int(raw.get("approvedAt")):
         raise Refused("bad approvedAt")
     e = {"id": pid, "sha256": sha.lower(), "image": image, "approvedAt": raw["approvedAt"]}
+    owner = owner_of(raw)
+    if owner:
+        e["owner"] = owner
     gamertag = clean_text(raw.get("gamertag"), TEXT_LIMITS["gamertag"])
     if not gamertag:
         raise Refused("no gamertag")
@@ -166,6 +180,43 @@ def entry_of(raw):
         if text:
             e[key] = text
     return e
+
+
+def owner_of(raw):
+    """The entry's owner id when it is the server's player id (12 lower-case hex digits), else
+    None: a XUID or anything else the server sends by mistake never reaches the site."""
+    owner = raw.get("owner")
+    return owner if isinstance(owner, str) and OWNER_RE.fullmatch(owner) else None
+
+
+def likes_url(url, kind):
+    """The public totals of a kind on the accounts service LIKES_URL names: its
+    /api/likes/counts, or the site's origin."""
+    u = urlsplit(url)
+    if u.scheme not in ("http", "https") or not u.netloc or u.query or u.fragment:
+        raise Refused(f"LIKES_URL must be an http(s) URL without a query, not {url!r}")
+    base = url if u.path.rstrip("/").endswith("/api/likes/counts") else url.rstrip("/") + "/api/likes/counts"
+    return base.rstrip("/") + "?kind=" + kind
+
+
+def read_likes(kind, id_re, warn):
+    """{item id: total} from LIKES_URL, or None when it is not set or cannot be read (logged,
+    never fatal). Ids that are not ids and totals that are not counts are left out."""
+    url = os.environ.get("LIKES_URL", "").strip()
+    if not url:
+        return None
+    try:
+        url = likes_url(url, kind)
+        doc = json.loads(fetch(url, MAX_LIKES_BYTES, tries=2))
+    except (Refused, Unreachable, ValueError) as e:
+        warn(f"the like totals {url} could not be read ({e}): no likes in this build")
+        return None
+    counts = doc.get("counts") if isinstance(doc, dict) and doc.get("version") == 1 and doc.get("kind") == kind else None
+    if not isinstance(counts, dict):
+        warn(f"the like totals {url} are not a version 1 list of {kind} totals: no likes in this build")
+        return None
+    return {k: v for k, v in counts.items()
+            if isinstance(k, str) and id_re.fullmatch(k) and is_int(v) and v <= MAX_LIKES}
 
 
 def feed_url(url):
@@ -332,6 +383,7 @@ def main():
         warn(f"the feed {url} could not be read ({e}): an empty gallery")
         return 0
     log(f"feed {url}: {len(raw)} photos")
+    likes = read_likes("photo", ID_RE, warn)
 
     origin = urlsplit(url)[:2]
     entries, seen, refused = [], set(), 0
@@ -394,15 +446,18 @@ def main():
         if args.cache:
             keep.update(f.name for f in cache_paths(args.cache, sha))
         p = {"id": pid, "title": e["title"], "gamertag": e["gamertag"]}
-        for key in ("car", "location"):
+        for key in ("owner", "car", "location"):
             if key in e:
                 p[key] = e[key]
+        if likes is not None:
+            p["likes"] = likes.get(pid, 0)
         p.update(src=f"photos/{pid}.jpg", w=w, h=h, thumb=f"photos/{pid}-thumb.jpg", tw=tw, th=th)
         photos.append(p)
 
     write_gallery(args.out, photos)
     log(f"{len(photos)} photos published ({downloaded} downloaded, {cached} from the cache); "
-        f"{refused} refused, {unreachable} not fetched, {len(dropped)} over the cap")
+        f"{refused} refused, {unreachable} not fetched, {len(dropped)} over the cap"
+        + ("" if likes is None else f"; {sum(p['likes'] for p in photos)} likes"))
     if args.cache:
         key = prune_cache(args.cache, keep)
         if os.environ.get("GITHUB_OUTPUT"):

@@ -16,7 +16,9 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `leaderboards.html`, `leaderboards.js` | the public server's leaderboards on a map of Colorado |
 | `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the screenshot lightbox |
 | `designs.html`, `designs.js` | the paint jobs and vinyl groups players share, with their share codes (also the Online page's newest three) |
-| `account.html`, `account.js` | website accounts: sign in with Discord, GitHub or an emailed code, see the account, sign out everywhere, delete it. It talks to the accounts service at `/api/` on the same site ([forza-live, `accounts/`](https://github.com/FH1-ReImagined/forza-live/tree/main/accounts)); a copy of the site without `/api/` says accounts are not available. The navbar's "Sign in" link says "Account" once this browser signed in (a `localStorage` hint: no other page calls the API) |
+| `account.html`, `account.js` | website accounts: sign in with Discord, GitHub or an emailed code, see the account, link it to the game, sign out everywhere, delete it. The launcher's "Link to website account" opens `account.html#link=<token>` (the page moves the token into `sessionStorage` and out of the address at once), or shows a code that is typed on this page; the page claims the link for the signed-in account, and the player confirms the account id in the launcher. A linked account shows its game's gamertag and can unlink it, and lists the game's photos and designs in every state (live, waiting for the check, held, hidden) with their likes; the player can delete them there (after a sign-in in the past 10 minutes). It talks to the accounts service at `/api/` on the same site ([forza-live, `accounts/`](https://github.com/FH1-ReImagined/forza-live/tree/main/accounts)); a copy of the site without `/api/` says accounts are not available. The navbar's "Sign in" link says "Account" once this browser signed in (a `localStorage` hint) |
+| `likes.js` | the thumbs-up on photos and designs. Everyone sees the totals built into the data files; only a visitor who signed in on this browser (the hint) makes the pages ask `/api/likes/mine` and `/api/likes/counts`, and gets a working button when the account is linked to the game. The other pages never call the API for anyone else |
+| `profile.html`, `profile.js` | a player's page, `profile.html?p=<player id>`: their photos and designs and the likes they got, from the site's own data files (the player id is the one the server publishes on its leaderboards, never a XUID). Nothing about the web account. Not indexed |
 | `press.html` | the press kit: facts, logo, social preview, screenshots and links |
 | `faq.html` | common questions (recomp or emulator, your own copy, online, Steam Deck, Mac, requirements), with FAQPage structured data |
 | `images/` | screenshots, the logo, the social preview (drawn from the logo and plain text, no game assets), the map (`colorado-map.svg`) |
@@ -56,7 +58,10 @@ page hides its photos section. `tools/build_gallery.py` downloads each new photo
 SHA-256, and re-encodes it with Pillow without any metadata (at most 1920 px wide, plus a 480 px
 thumbnail); `actions/cache` keeps the re-encoded copies, so the server sends each photo once.
 No photo is kept in this repository, and a photo withdrawn on the server leaves the site with
-the next run. To publish right after approving photos, run the workflow by hand
+the next run. Each photo keeps its owner's player id (for the profile pages; only the server's
+12-hex-digit id, never a XUID) and gets its like total from the repository variable `LIKES_URL`,
+the accounts service's public totals (`https://forza.dyotson.dev/api/likes/counts`). While it is
+unset, or when the totals cannot be read, that run publishes no totals and goes on. To publish right after approving photos, run the workflow by hand
 (Actions, pages, Run workflow).
 
 The paint jobs and vinyl groups players share from the game's storefront come from the same
@@ -65,7 +70,8 @@ server: `tools/build_designs.py` reads `/community/designs.json` next to `GALLER
 Pillow as a PNG without metadata (at most 576 px wide), with its own `actions/cache`. The page
 shows each design's share code, which finds it in the game's storefront search; it never shows
 a XUID, the design itself or its description. A server without the designs feed (HTTP 404)
-gives an empty list, and the Online page hides its designs section.
+gives an empty list, and the Online page hides its designs section. The designs get their owner
+ids and like totals as the photos do.
 
 The map and its pins are built from a copy of the game in the game's repository
 (`tools/build_map_roads.py`, `tools/extract_map_points.py`, described in forza-live's
