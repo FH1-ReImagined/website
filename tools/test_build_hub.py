@@ -4,7 +4,7 @@ stand-in for the accounts service's /api/hub/ (forza-live, accounts/README.md, "
 packs hub") served on 127.0.0.1.
 
 The build: the hub off (HTTP 404) or unset gives "on": false, no item pages and mods.html keeps
-its noindex; on, only the checked fields, the download address made from the download host and
+no sitemap entry; on, only the checked fields, the download address made from the download host and
 the item's SHA-256 and folder (never the one the service sends), the download host refused when
 it is not https or is this site, one page per item with the uploader's text escaped, and the
 sitemap entries. check_site.py passes, and refuses pages that do not match the list.
@@ -280,13 +280,13 @@ def main():
     try:
         site = tmp / "site"
         subprocess.run([str(TOOLS / "assemble.sh"), str(site)], check=True)
-        check('content="noindex"' in (site / "mods.html").read_text(), "mods.html starts with noindex")
+        check('content="noindex"' not in (site / "mods.html").read_text(), "mods.html is for search engines")
 
         print("-- the hub off, or no HUB_URL")
         Api.status = 404
         rc, _ = build(site, url, "--require")
         check(rc == 0 and hub_doc(site)["on"] is False and not (site / "mods").exists(), "off (404): on false, no pages")
-        check('content="noindex"' in (site / "mods.html").read_text(), "and mods.html keeps its noindex")
+        check("mods.html" not in (site / "sitemap.xml").read_text(), "and no sitemap entry for it")
         check(check_site(site).returncode == 0, "check_site.py passes")
         rc, _ = build(site, None)
         check(rc == 0 and hub_doc(site)["on"] is False, "HUB_URL unset: on false")
@@ -324,7 +324,6 @@ def main():
         check(re.search(r"<title>&lt;script&gt;.* - Mod - Forza Horizon 1: ReImagined</title>", page) is not None
               and '<link rel="canonical" href="https://forza.dyotson.dev/mods/MODAAAAAAAAA.html">' in page,
               "its own title and canonical address")
-        check('content="noindex"' not in (site / "mods.html").read_text(), "mods.html loses its noindex")
         sitemap = (site / "sitemap.xml").read_text()
         check(all(f"https://forza.dyotson.dev/{p}" in sitemap for p in ("mods.html", "mods/MODAAAAAAAAA.html",
                                                                          "mods/PACKBBBBBBBB.html")), "the sitemap lists them")

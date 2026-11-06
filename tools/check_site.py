@@ -26,8 +26,7 @@ DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car
                "ratings", "createdAt", "src", "w", "h"}
 OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
 # Pages that are not in the navbar: no link in it is the current page.
-# mods.html joins the navbar when the hub opens (website #2): until then it is reached by address.
-NOT_IN_NAV = {"profile.html", "mods.html"}
+NOT_IN_NAV = {"profile.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"

@@ -8,9 +8,8 @@ OUT/sitemap.xml.
 
 HUB_URL is the accounts service: the site's origin, or any URL on it such as LIKES_URL (only its
 scheme, host and port are used). While the service has no hub (HTTP 404, FORZA_HUB off), or
-HUB_URL is unset, data/hub.json says so ("on": false), no item page is made, and mods.html keeps
-its noindex. With the hub on, mods.html loses its noindex and goes into the sitemap with the
-item pages.
+HUB_URL is unset, data/hub.json says so ("on": false), no item page is made, and mods.html says
+the hub is not open yet. With the hub on, mods.html goes into the sitemap with the item pages.
 
 Only the fields the pages show are kept, checked. The download address is made here from the
 service's download host (an https origin that is not this site's) and the item's SHA-256 and
@@ -39,7 +38,6 @@ KINDS = {"mod": "Mod", "pack": "Texture pack"}
 MAX_BYTES = 8 << 20
 MAX_ITEMS = 5000
 MAX_COUNT = 10 ** 12
-NOINDEX = '<meta name="robots" content="noindex">\n'
 
 
 def log(msg):
@@ -189,8 +187,6 @@ def write(out, doc, on):
     pages.mkdir()
     for item in doc["items"]:
         (pages / f"{item['id']}.html").write_text(page(template, item), encoding="utf-8")
-    text = mods_html.read_text(encoding="utf-8")
-    mods_html.write_text(text.replace(NOINDEX, ""), encoding="utf-8")
     sitemap = out / "sitemap.xml"
     if sitemap.is_file():
         urls = [f"{SITE}/mods.html"] + [f"{SITE}/mods/{i['id']}.html" for i in doc["items"]]
