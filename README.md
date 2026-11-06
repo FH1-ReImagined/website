@@ -17,14 +17,16 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the screenshot lightbox |
 | `designs.html`, `designs.js` | the paint jobs and vinyl groups players share, with their share codes (also the Online page's newest three) |
 | `account.html`, `account.js` | website accounts: sign in with Discord, GitHub or an emailed code, see the account, link it to the game, sign out everywhere, delete it. The launcher's "Link to website account" opens `account.html#link=<token>` (the page moves the token into `sessionStorage` and out of the address at once), or shows a code that is typed on this page; the page claims the link for the signed-in account, and the player confirms the account id in the launcher. A linked account shows its game's gamertag and can unlink it, and lists the game's photos and designs in every state (live, waiting for the check, held, hidden) with their likes; the player can delete them there (after a sign-in in the past 10 minutes). It talks to the accounts service at `/api/` on the same site ([forza-live, `accounts/`](https://github.com/FH1-ReImagined/forza-live/tree/main/accounts)); a copy of the site without `/api/` says accounts are not available. The navbar's "Sign in" link says "Account" once this browser signed in (a `localStorage` hint) |
-| `likes.js` | the thumbs-up on photos and designs. Everyone sees the totals built into the data files; only a visitor who signed in on this browser (the hint) makes the pages ask `/api/likes/mine` and `/api/likes/counts`, and gets a working button when the account is linked to the game. The other pages never call the API for anyone else |
+| `photo-of-the-month.html`, `potm.js` | Photo of the Month: this month's standings (live from the accounts service's public `/api/potm/standings`, sent without cookies, refreshed every minute; the built copy when it cannot be read), with each entry's like button and share buttons (the system share sheet, copy link, X, Bluesky, Reddit, Facebook: plain links, nothing loaded from them), last month (being checked, or its winner) and the past winners. `potm.js` also shows the newest winner on the front page (from the built file only: no API call) and fills the rules page's numbers |
+| `photo-of-the-month-rules.html` | the event's rules: free to enter and vote, dates (UTC months), entries, which likes are votes, the tie-break, checks and disqualification, and the prize as a marked placeholder until it is decided |
+| `likes.js` | the thumbs-up on photos and designs. Everyone sees the totals built into the data files; only a visitor who signed in on this browser (the hint) makes the pages ask `/api/likes/mine` and `/api/likes/counts`, and gets a working button when the account is linked to the game. The other pages never call the API for anyone else, except the Photo of the Month page's public standings |
 | `profile.html`, `profile.js` | a player's page, `profile.html?p=<player id>`: their photos and designs and the likes they got, from the site's own data files (the player id is the one the server publishes on its leaderboards, never a XUID). Nothing about the web account. Not indexed |
 | `press.html` | the press kit: facts, logo, social preview, screenshots and links |
 | `faq.html` | common questions (recomp or emulator, your own copy, online, Steam Deck, Mac, requirements), with FAQPage structured data |
 | `images/` | screenshots, the logo, the social preview (drawn from the logo and plain text, no game assets), the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
-| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py` and `build_designs.py` and their tests `test_build_gallery.py` and `test_build_designs.py`, and `test_account_page.py` (not published) |
+| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py`, `build_designs.py` and `build_potm.py` and their tests `test_build_gallery.py`, `test_build_designs.py` and `test_build_potm.py`, and `test_account_page.py` (not published) |
 
 ## Preview
 
@@ -72,6 +74,16 @@ shows each design's share code, which finds it in the game's storefront search; 
 a XUID, the design itself or its description. A server without the designs feed (HTTP 404)
 gives an empty list, and the Online page hides its designs section. The designs get their owner
 ids and like totals as the photos do.
+
+Photo of the Month comes from the accounts service too: `tools/build_potm.py` (after the
+gallery) reads its public `/api/potm/winners` and `/api/potm/standings` (this month and the month
+before) from the repository variable `POTM_URL`, or else from `LIKES_URL`'s site, and writes
+`data/photo-of-the-month.json`: the winners, the two months' standings, and `featured`, the newest
+winner with its photo's files from the gallery (null while there is none, or when its photo left
+the gallery). The front page shows `featured`; **the launcher can use it as its background**: read
+`https://forza.dyotson.dev/data/photo-of-the-month.json`, then `featured.src` (a JPEG of at most
+1920 px) on the same site, crediting `featured.gamertag` and `featured.title`. While the service
+runs no contest, or cannot be read, the file is empty (`"from": null`) and that build goes on.
 
 The map and its pins are built from a copy of the game in the game's repository
 (`tools/build_map_roads.py`, `tools/extract_map_points.py`, described in forza-live's

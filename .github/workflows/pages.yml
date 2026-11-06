@@ -18,6 +18,10 @@
 # Both builds add each item's like total from the website accounts service's public totals, the
 # repository variable LIKES_URL (https://forza.dyotson.dev/api/likes/counts; unset or unreachable:
 # no totals in that build, which goes on).
+# Photo of the Month (data/photo-of-the-month.json: the winners, the standings, the home page's
+# winner) comes from the same service's /api/potm/ (tools/build_potm.py), at the repository
+# variable POTM_URL or else LIKES_URL's site. A service with no contest, or one that cannot be
+# read, gives an empty file and the build goes on.
 name: pages
 
 on:
@@ -106,6 +110,10 @@ jobs:
         with:
           path: .designs-cache
           key: designs-${{ steps.designs.outputs.cache-key }}
+      - name: Copy Photo of the Month
+        env:
+          POTM_URL: ${{ vars.POTM_URL || vars.LIKES_URL }}
+        run: python tools/build_potm.py _site
       - name: Check the site
         run: python tools/check_site.py _site
       - uses: actions/configure-pages@v5
