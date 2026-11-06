@@ -7,7 +7,8 @@ Checks:
 - a copy of the site without /api/ says accounts are not available;
 - signed out, the page shows the sign-in methods the service offers, as forms that post to
   allauth's provider redirect with callback_url /account.html, and the 13-or-older line;
-- signed in, it shows the account, with the API's text as text, and the navbar says "Account";
+- signed in, it shows the account, with the API's text as text, and the navbar says "Account"
+  and drops Download;
 - ?error=busy is shown, and the address is cleaned;
 - the game link: the launcher's #link=<token> asks to link the gamertag the service names (as
   text), or to sign in first; a claimed request says to confirm in the launcher, a linked one
@@ -300,6 +301,8 @@ def main():
             check("13 or older" in d.text(), "the 13-or-older line")
             nav = [a for t, a in d.tags if t == "a" and a.get("class") == "nav-account"]
             check(len(nav) == 1 and "Sign in" in d.text(), "the navbar says Sign in")
+            cta = [a for t, a in d.tags if t == "a" and a.get("class") == "nav-cta"]
+            check(len(cta) == 1 and "hidden" not in cta[0], "the navbar has Download")
 
             print("-- signed in")
             Api.mode = "in"
@@ -310,6 +313,8 @@ def main():
             check(not any(t == "img" and a.get("src") == "x" for t, a in d.tags) and "<img src=x" in d.text(),
                   "events go in as text")
             check("Account" in [x.strip() for x in d.texts], "the navbar says Account")
+            cta = [a for t, a in d.tags if t == "a" and a.get("class") == "nav-cta"]
+            check(len(cta) == 1 and "hidden" in cta[0], "the navbar hides Download for a visitor who signed in")
             check(not d.shown("delete-reauth"), "no sign-in-again note after a recent sign-in")
 
             print("-- linking the game")

@@ -5,7 +5,7 @@
 // CSRF token from the __Host-fh_csrf cookie. Where the site has no /api/ (a static copy), the
 // page says accounts are not available. Text from the API goes in with textContent only.
 // The localStorage key fh-signed-in is the navbar's hint (nav.js): it says "Account" instead of
-// "Sign in", without other pages ever calling the API.
+// "Sign in" and hides Download, without other pages ever calling the API.
 // Linking the game: the launcher opens account.html#link=<token>. The page moves the token into
 // sessionStorage (fh-link) and out of the address at once, so it survives a Discord or GitHub
 // sign-in in this tab but is never in the history or a log. Signed in, it asks the service whose
@@ -77,8 +77,7 @@
       if (on) localStorage.setItem(HINT, "1");
       else localStorage.removeItem(HINT);
     } catch (e) { /* storage off: the navbar keeps saying Sign in */ }
-    var link = document.querySelector(".nav-account");
-    if (link) link.textContent = on ? "Account" : "Sign in";
+    if (window.FHNav) window.FHNav.signedIn(on);  // the navbar: Account and no Download, or Sign in
   }
 
   function csrf() {

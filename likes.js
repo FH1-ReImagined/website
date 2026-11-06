@@ -35,8 +35,7 @@
   }
   function forget() {
     try { localStorage.removeItem(HINT); } catch (e) { /* storage off */ }
-    var link = document.querySelector(".nav-account");
-    if (link) link.textContent = "Sign in";
+    if (window.FHNav) window.FHNav.signedIn(false);  // the navbar: Sign in, and Download again
   }
   function csrf() {
     var m = document.cookie.match(/(?:^|;\s*)__Host-fh_csrf=([^;]+)/);

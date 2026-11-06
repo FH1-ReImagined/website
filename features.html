@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>document.documentElement.classList.add("js")</script>
+<script>document.documentElement.classList.add("js");try{if(localStorage.getItem("fh-signed-in")==="1")document.documentElement.classList.add("signed-in")}catch(e){}</script>
 <title>Features - Forza Horizon 1: ReImagined, the native PC recomp</title>
 <meta name="description" content="Single player with Title Update 4, online free roam, a co-op campaign, mods, HD texture packs and a frame rate you set. Forza Horizon 1: ReImagined. No game code or data included.">
 <link rel="canonical" href="https://forza.dyotson.dev/features.html">
@@ -33,18 +33,6 @@
   <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
 </div>
 
-<svg class="road" aria-hidden="true" focusable="false">
-  <path class="road-edge" d=""/>
-  <path class="road-asphalt" d=""/>
-  <path class="road-line" d=""/>
-  <path class="road-driven" d=""/>
-</svg>
-<svg class="car" aria-hidden="true" focusable="false" viewBox="0 0 24 44" width="24" height="44">
-  <rect x="2" y="2" width="20" height="40" rx="8" fill="#ff5470"/>
-  <rect x="5" y="12" width="14" height="9" rx="3" fill="#ffe9c0"/>
-  <rect x="5" y="28" width="14" height="6" rx="2" fill="#ffe9c0" opacity=".8"/>
-  <rect x="4" y="3" width="4" height="3" rx="1.5" fill="#fff4c2"/><rect x="16" y="3" width="4" height="3" rx="1.5" fill="#fff4c2"/>
-</svg>
 
 <header class="topbar">
   <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
@@ -55,7 +43,6 @@
       <summary>Online</summary>
       <div class="menu-panel" id="nav-online">
         <div class="menu-list">
-          <a href="online.html">Horizon World</a>
           <a href="leaderboards.html">Leaderboards</a>
           <a href="mods.html">Mods and Textures</a>
         </div>
@@ -69,21 +56,21 @@
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
-          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
         </div>
       </div>
     </details>
-    <a class="nav-cta" href="download.html">Download</a>
-    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
     <a class="nav-account" href="account.html">Sign in</a>
+    <a class="nav-cta" href="download.html">Download</a>
   </nav>
 </header>
 
 <main>
-  <section id="mountains" class="stop right">
-    <div class="panel">
-      <p class="kicker">Mile 12 &middot; The mountain roads</p>
+  <section id="mountains" class="stop">
+    <div class="section-head">
+      <p class="kicker">Features</p>
       <h1 class="plain">What you get</h1>
+      <p class="lead">The whole 2012 festival, native on your PC, with the online side back and the extras a PC version should have.</p>
     </div>
     <ul class="cards" aria-label="Features">
       <li><figure>
@@ -105,9 +92,9 @@
     </ul>
   </section>
 
-  <section id="extras" class="stop left">
-    <div class="panel">
-      <p class="kicker">Mile 18 &middot; Make it yours</p>
+  <section id="extras" class="stop">
+    <div class="section-head">
+      <p class="kicker">Make it yours</p>
       <h2>Together, modded, sharper</h2>
     </div>
     <ul class="cards" aria-label="Co-op, mods and graphics">
@@ -135,9 +122,9 @@
     <p class="chips"><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/docs/coop_campaign.md">Co-op</a><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/docs/modding.md">Mods</a><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/docs/texture_packs.md">Texture packs</a><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/docs/playing.md">Playing</a></p>
   </section>
 
-  <section id="numbers" class="stop right">
-    <div class="panel">
-      <p class="kicker">Mile 24 &middot; By the numbers</p>
+  <section id="numbers" class="stop numbers">
+    <div class="section-head">
+      <p class="kicker">By the numbers</p>
       <h2>Measured, not promised</h2>
       <dl class="stats">
         <div><dt>23</dt><dd>DLC packages</dd></div>
@@ -145,6 +132,8 @@
         <div><dt>30</dt><dd>fps, the original cap, the setting for low-end PCs</dd></div>
         <div><dt>4.6 min</dt><dd>one measured build</dd></div>
       </dl>
+    </div>
+    <div class="panel">
       <table class="fps">
         <caption>Frames per second on a Ryzen 7 7800X3D with a Radeon RX 9060 XT</caption>
         <thead><tr><th scope="col">frame_rate</th><th scope="col">Free roam</th><th scope="col">Race, 7 AI cars</th></tr></thead>
@@ -160,14 +149,48 @@
 </main>
 
 <footer>
-  <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. Forza, Forza Horizon, Xbox and Xbox LIVE are trademarks of Microsoft. It contains no game code or assets; you must own the game. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
-  <p>Made with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a>, our fork of the <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue SDK</a>. Community: <a href="https://discord.gg/yu7zScdcWw">Discord</a>.</p>
-  <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+      <p>The original 2012 Forza Horizon, recompiled for Windows and Linux, and online again. Built with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a> (our <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue</a> fork).</p>
+      <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw"><span>Join the Discord</span></a>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Play</p>
+      <ul>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="online.html">Play online</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Community</p>
+      <ul>
+        <li><a href="gallery.html">Photos</a></li>
+        <li><a href="designs.html">Designs</a></li>
+        <li><a href="leaderboards.html">Leaderboards</a></li>
+        <li><a href="mods.html">Mods and Textures</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Project</p>
+      <ul>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">Source code</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/website">Website source</a></li>
+        <li><a href="press.html">Press kit</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/PRIVACY.md">Privacy policy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-legal">
+    <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. Forza, Forza Horizon, Xbox and Xbox LIVE are trademarks of Microsoft. It contains no game code or assets; you must own the game. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+    <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  </div>
 </footer>
 
 <dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>
 <script src="nav.js"></script>
-<script src="script.js"></script>
 <script src="photos.js"></script>
 </body>
 </html>

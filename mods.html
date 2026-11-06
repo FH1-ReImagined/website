@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>document.documentElement.classList.add("js")</script>
+<script>document.documentElement.classList.add("js");try{if(localStorage.getItem("fh-signed-in")==="1")document.documentElement.classList.add("signed-in")}catch(e){}</script>
 <title>Mods and Textures - Forza Horizon 1: ReImagined</title>
 <meta name="description" content="Mods and texture packs players made for Forza Horizon 1: ReImagined, checked for malware and approved by a maintainer, with each file's SHA-256. Add them with the launcher.">
 <link rel="canonical" href="https://forza.dyotson.dev/mods.html">
@@ -35,7 +35,6 @@
       <summary>Online</summary>
       <div class="menu-panel" id="nav-online">
         <div class="menu-list">
-          <a href="online.html">Horizon World</a>
           <a href="leaderboards.html">Leaderboards</a>
           <a href="mods.html" aria-current="page">Mods and Textures</a>
         </div>
@@ -49,13 +48,12 @@
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
-          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
         </div>
       </div>
     </details>
-    <a class="nav-cta" href="download.html">Download</a>
-    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
     <a class="nav-account" href="account.html">Sign in</a>
+    <a class="nav-cta" href="download.html">Download</a>
   </nav>
 </header>
 
@@ -109,8 +107,44 @@
 </main>
 
 <footer>
-  <p>The mods and texture packs were made and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
-  <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+      <p>The original 2012 Forza Horizon, recompiled for Windows and Linux, and online again. Built with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a> (our <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue</a> fork).</p>
+      <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw"><span>Join the Discord</span></a>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Play</p>
+      <ul>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="online.html">Play online</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Community</p>
+      <ul>
+        <li><a href="gallery.html">Photos</a></li>
+        <li><a href="designs.html">Designs</a></li>
+        <li><a href="leaderboards.html">Leaderboards</a></li>
+        <li><a href="mods.html">Mods and Textures</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Project</p>
+      <ul>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">Source code</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/website">Website source</a></li>
+        <li><a href="press.html">Press kit</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/PRIVACY.md">Privacy policy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-legal">
+    <p>The mods and texture packs were made and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+    <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  </div>
 </footer>
 
 <script src="nav.js"></script>
