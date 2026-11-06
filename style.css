@@ -294,21 +294,23 @@ main > .stop:first-child { padding-top: calc(var(--bar-h) + clamp(40px, 6vw, 80p
 .ticks li { position: relative; padding-left: 30px; color: var(--soft); }
 .ticks li::before { content: ""; position: absolute; left: 0; top: .3em; width: 18px; height: 18px; border-radius: 50%; background: var(--grad); -webkit-mask: radial-gradient(circle, transparent 0 3px, #000 3.5px); mask: radial-gradient(circle, transparent 0 3px, #000 3.5px); }
 
-/* Pictures that open in the viewer (photos.js): a card with its caption under the picture. */
+/* Pictures that open in the viewer (photos.js): a card with its caption under the picture. Only the
+   picture's own button (a child of its figure or list item) is reset: a card's other buttons, such as
+   the thumbs-up (likes.js), keep their own look. */
 .cards { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .cards li.wide { grid-column: 1 / -1; }
 .cards figure { margin: 0; height: 100%; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: 0 16px 40px rgba(4, 2, 14, .35); }
-.cards button { all: unset; display: block; cursor: zoom-in; line-height: 0; overflow: hidden; position: relative; }
-.cards button:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+.cards figure > button { all: unset; display: block; cursor: zoom-in; line-height: 0; overflow: hidden; position: relative; }
+.cards figure > button:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
 .cards img { display: block; width: 100%; height: auto; transition: transform .5s var(--ease); }
-.cards button:hover img { transform: scale(1.04); }
+.cards figure > button:hover img { transform: scale(1.04); }
 .cards li:not(.wide) img { aspect-ratio: 16 / 10; object-fit: cover; }
 .cards li:not(.wide) img[src*="launcher"] { object-position: top; }
 .cards figcaption { padding: 14px 18px 16px; font-size: 15px; line-height: 1.45; color: var(--muted); }
 .cards figcaption b { display: block; color: var(--cream); font: 800 22px/1.1 var(--font-display); letter-spacing: .01em; margin-bottom: 4px; }
 .shots { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.shots button { all: unset; cursor: zoom-in; display: block; position: relative; border-radius: 14px; overflow: hidden; width: 100%; line-height: 0; }
-.shots button:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+.shots li > button { all: unset; cursor: zoom-in; display: block; position: relative; border-radius: 14px; overflow: hidden; width: 100%; line-height: 0; }
+.shots li > button:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
 .shots img { display: block; width: 100%; height: auto; }
 
 /* ---- the photo viewer (photos.js): one photo at a time, sliding to the next ---- */
@@ -745,16 +747,21 @@ a.photo-by:hover { color: var(--orange); text-decoration: underline; }
 .rules p { color: var(--soft); }
 .press-page .rules, .faq-page .rules { margin: 0 0 16px; }
 
-/* ---- likes (likes.js): a quiet thumbs-up and its count ---- */
-.like-slot { margin-left: auto; flex: none; }
+/* ---- likes (likes.js): a quiet thumbs-up and its count ----
+   The same pill as a link (signed out), a button (signed in and linked) or a plain count (your own),
+   on the photos, designs, mods and texture packs. Set from the slot as well, so that no card's own
+   button rule can take its padding or spacing away. */
+.like-slot { margin-left: auto; flex: none; display: inline-flex; }
 .like-slot:empty { display: none; }
-.like {
-  display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px 0 11px; border-radius: 999px;
+.like, .like-slot > .like {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; box-sizing: border-box;
+  min-width: 58px; height: 34px; min-height: 34px; margin: 0; padding: 0 13px 0 11px; border-radius: 999px;
+  line-height: 1; position: static; overflow: visible; cursor: default;
   font: 700 15px/1 var(--font-ui); letter-spacing: .02em; color: var(--soft); text-decoration: none; font-variant-numeric: tabular-nums; white-space: nowrap;
   background: rgba(255, 233, 192, .07); border: 1px solid transparent; transition: background-color .15s, color .15s, border-color .15s;
 }
-.like svg { width: 17px; height: 17px; fill: currentColor; flex: none; }
-button.like { cursor: pointer; }
+.like svg, .like-slot > .like svg { display: block; width: 17px; height: 17px; fill: currentColor; flex: none; }
+button.like, a.like, .like-slot > button.like, .like-slot > a.like { cursor: pointer; }
 button.like:hover, a.like:hover { color: var(--cream); background: rgba(255, 157, 60, .16); border-color: rgba(255, 157, 60, .4); }
 button.like[aria-pressed="true"] { color: var(--ink); background: var(--grad); }
 button.like[aria-pressed="true"]:hover { color: var(--ink); filter: brightness(1.06); }
