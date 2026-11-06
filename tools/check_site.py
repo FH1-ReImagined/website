@@ -25,8 +25,9 @@ FULL_WIDTH, THUMB_WIDTH, MAX_SIDE = 1920, 480, 7680
 DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car", "downloads", "rating",
                "ratings", "createdAt", "src", "w", "h"}
 OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
-# Pages that are not in the navbar: no link in it is the current page.
-NOT_IN_NAV = {"profile.html"}
+# Pages that are not in the navbar: no link in it is the current page. online.html (how to play
+# online) is reached from the landing page, the FAQ and the footer.
+NOT_IN_NAV = {"profile.html", "online.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
