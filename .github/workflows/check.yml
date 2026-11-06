@@ -1,8 +1,10 @@
 # Pull requests: assemble the site as the Pages workflow does and check that every local link
 # and image of the pages is there and the data files parse (tools/check_site.py), then test the
 # community photos and designs builds on fixture feeds of synthetic images, with the pages in
-# headless Chrome (tools/test_build_gallery.py, tools/test_build_designs.py), and the account page
-# against a stand-in for the accounts service's /api/ (tools/test_account_page.py).
+# headless Chrome (tools/test_build_gallery.py, tools/test_build_designs.py), the account page
+# against a stand-in for the accounts service's /api/ (tools/test_account_page.py), and Photo of
+# the Month's build and pages against a stand-in for its /api/potm/ (tools/test_build_potm.py), and
+# the hub's build and pages against a stand-in for its /api/hub/ (tools/test_build_hub.py).
 name: check
 
 on:
@@ -28,3 +30,5 @@ jobs:
       - run: python tools/test_build_gallery.py
       - run: python tools/test_build_designs.py
       - run: python tools/test_account_page.py
+      - run: python tools/test_build_potm.py
+      - run: python tools/test_build_hub.py

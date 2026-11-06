@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
+<title>Mods and Textures - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="Mods and texture packs players made for Forza Horizon 1: ReImagined, checked for malware and approved by a maintainer, with each file's SHA-256. Add them with the launcher.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://forza.dyotson.dev/mods.html">
+<meta name="theme-color" content="#140d2e">
+<meta property="og:title" content="Mods and Textures - Forza Horizon 1: ReImagined">
+<meta property="og:description" content="Mods and texture packs players made, checked and approved, with each file's SHA-256.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://forza.dyotson.dev/mods.html">
+<meta property="og:image" content="https://forza.dyotson.dev/images/social-preview.png">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#hub-items">Skip to the mods and packs</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars" style="--stars:.7"></div>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="online.html">Horizon World</a>
+          <a href="leaderboards.html">Leaderboards</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="photo-of-the-month.html">Photo of the Month</a>
+          <a href="designs.html">Designs</a>
+          <a href="press.html">Press</a>
+          <a href="faq.html">FAQ</a>
+          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-cta" href="download.html">Download</a>
+    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+    <a class="nav-account" href="account.html">Sign in</a>
+  </nav>
+</header>
+
+<main class="board-page hub-page" id="main">
+  <div class="page-head">
+    <p class="kicker">Community &middot; Made by players</p>
+    <h1><span class="h1-big">Mods and Textures</span></h1>
+    <p class="aside">Mods and texture packs players made with the launcher's tools. Every file is checked for malware and approved by a maintainer before it is listed here, and comes from its own download address with its SHA-256. Add one in the launcher: <b>Mods</b> or <b>Texture packs</b> &gt; <b>Add</b>, and pick the downloaded zip.</p>
+  </div>
+
+  <div class="hub-filter" role="group" aria-label="Show" data-hub-filter hidden>
+    <button type="button" data-kind="" aria-pressed="true">All</button>
+    <button type="button" data-kind="mod" aria-pressed="false">Mods</button>
+    <button type="button" data-kind="pack" aria-pressed="false">Texture packs</button>
+  </div>
+  <ul class="hub-list" id="hub-items" aria-label="Mods and texture packs"></ul>
+  <p class="photo-state" data-hub-state>Loading...</p>
+  <noscript><p class="photo-state error">This list needs JavaScript.</p></noscript>
+
+  <section class="panel hub-share" id="hub-share" hidden aria-labelledby="hub-share-head">
+    <h2 id="hub-share-head">Share yours</h2>
+    <p class="aside" data-hub-share-note>Sign in on <a href="account.html">your account page</a> and link it to your game to share a mod or a texture pack.</p>
+    <form id="hub-form" hidden>
+      <p><label>What it is <select name="kind"><option value="mod">A mod</option><option value="pack">A texture pack</option></select></label></p>
+      <p><label>Title <input name="title" required maxlength="60" size="40"></label></p>
+      <p><label>Version <input name="version" maxlength="20" size="10"></label></p>
+      <p><label>Description<br><textarea name="description" maxlength="1000" rows="4" cols="60"></textarea></label></p>
+      <p><label>The .zip <input name="file" type="file" accept=".zip,application/zip" required></label></p>
+      <p><label><input name="own_work" type="checkbox" required> This is my own work: it holds none of the game's original files, and I may share it.</label></p>
+      <p><button type="submit" class="btn primary"><span>Upload</span><small>Checked before it is listed</small></button></p>
+      <progress data-hub-progress max="100" value="0" hidden></progress>
+      <p class="photo-state" data-hub-message role="status"></p>
+    </form>
+    <div data-hub-mine-box hidden>
+      <h3>Your uploads</h3>
+      <ul class="item-list" data-hub-mine></ul>
+    </div>
+  </section>
+
+  <section class="panel rules hub-rules" aria-labelledby="hub-rules">
+    <h2 id="hub-rules">Rules</h2>
+    <ul>
+      <li><b>Only your own work.</b> Never the game's original files, and nothing you may not share.</li>
+      <li><b>A mod</b> is a zip of a <code>media</code> folder with files of the game's own types at the game's paths, an optional <code>mod.toml</code>, and read-me or licence files (.txt, .md). <b>A texture pack</b> is a zip of <code>&lt;fingerprint&gt;.dds</code> or <code>.png</code> textures, an optional <code>pack.toml</code>, and .txt or .md files. The launcher's <b>Add</b> takes the same zips.</li>
+      <li><b>Refused:</b> programs, scripts, archives inside the zip, links, paths that leave the zip's folder, files the game cannot load, and zips that unpack to more than 4 GB or to far more than their size. The upload is at most 512 MB.</li>
+      <li><b>Checked:</b> every upload is scanned for malware in a separate, isolated checker and repacked with only its checked files; then a maintainer looks at it before it is listed.</li>
+      <li><b>Report</b> a mod or pack that is broken, harmful, offensive or not the uploader's own: the report button is on its page. A report of malware from a player whose likes count hides it at once until a maintainer checks it.</li>
+      <li><b>To have something taken down</b> (it is yours and was shared without your permission, or it holds the game's files), <a href="https://github.com/FH1-ReImagined/website/issues/new">open an issue on the website's repository</a> or ask on the <a href="https://discord.gg/yu7zScdcWw">Discord</a>, with its address. You can delete your own uploads here.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>The mods and texture packs were made and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+  <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+</footer>
+
+<script src="nav.js"></script>
+<script src="likes.js"></script>
+<script src="hub.js"></script>
+</body>
+</html>

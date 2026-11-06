@@ -109,6 +109,7 @@ document.documentElement.classList.add("js");
       <div class="menu-panel" id="nav-community">
         <div class="menu-list">
           <a href="gallery.html">Photos</a>
+          <a href="photo-of-the-month.html">Photo of the Month</a>
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
@@ -172,6 +173,18 @@ document.documentElement.classList.add("js");
     </ul>
   </section>
 
+  <section id="potm" class="stop left" data-potm-featured hidden>
+    <div class="panel">
+      <p class="kicker">Mile 5 &middot; Photo of the Month</p>
+      <h2>Photo of the Month <span class="potm-of" data-potm-month></span></h2>
+      <p class="aside">The latest winner: the shot with the most votes in its month. Entering and voting are free.</p>
+      <div class="cta">
+        <a class="btn ghost" href="photo-of-the-month.html"><span>Vote this month</span><small>Standings and past winners</small></a>
+      </div>
+    </div>
+    <div class="potm-featured" data-potm-photo></div>
+  </section>
+
   <section id="photos" class="stop left" data-photos-section hidden>
     <div class="panel">
       <p class="kicker">Mile 6 &middot; Photo mode</p>
@@ -210,5 +223,6 @@ document.documentElement.classList.add("js");
 <script src="script.js"></script>
 <script src="likes.js"></script>
 <script src="photos.js"></script>
+<script src="potm.js"></script>
 </body>
 </html>

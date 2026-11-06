@@ -659,3 +659,78 @@ button.like:disabled { opacity: .6; cursor: progress; }
 .item-body b { color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-body span { color: var(--muted); font-size: 14px; }
 .item-list .btn { padding: 8px 14px; flex: none; }
+/* Photo of the Month (potm.js): the standings, last month, the past winners, the rules and the
+   home page's winner. */
+.potm-page .page-head { margin-bottom: 24px; }
+.potm-month { margin: 0 0 36px; }
+.potm-month[hidden] { display: none; }
+.potm-month h2 { color: var(--cream); margin: 0 4px 6px; }
+.potm-month .photo-state { margin: 0 4px 14px; max-width: 820px; }
+.potm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 980px; }
+.potm-entry { display: grid; grid-template-columns: 56px minmax(0, 240px) minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+.potm-entry.potm-target { outline: 2px solid var(--orange); outline-offset: 2px; }
+.potm-entry:first-child .potm-rank { color: #1a0f33; background: linear-gradient(90deg, var(--orange), var(--pink)); }
+.potm-rank { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); color: var(--cream); font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+.potm-entry > button, .potm-winner > button, .potm-featured > button { display: block; padding: 0; border: 0; border-radius: 10px; overflow: hidden; cursor: zoom-in; background: rgba(255, 255, 255, .05); }
+.potm-entry img, .potm-winner img, .potm-featured img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.potm-nophoto { display: flex; align-items: center; justify-content: center; aspect-ratio: 16 / 9; padding: 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); color: var(--muted); font-size: 13px; text-align: center; }
+.potm-info { min-width: 0; }
+.potm-by { margin: 0 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.potm-by b { color: var(--cream); }
+.potm-by a { color: #e6dcff; font-weight: 700; text-decoration: none; }
+.potm-by a:hover { color: var(--orange); text-decoration: underline; }
+.potm-counts { margin: 0 0 6px; color: var(--muted); font-size: 14.5px; }
+.potm-counts b { color: var(--cream); }
+.potm-info .photo-foot { padding: 0; min-height: 0; justify-content: flex-start; }
+.potm-info .like-slot { margin-left: 0; }
+.potm-share { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.potm-share-btn { font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1; color: #e6dcff; background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; text-decoration: none; cursor: pointer; }
+.potm-share-btn:hover, .potm-share-btn:focus-visible { border-color: var(--orange); color: var(--cream); }
+.potm-page-share .potm-share { margin-top: 12px; }
+.potm-page-share .potm-share-btn { background: var(--panel); border-color: var(--orange); }
+.potm-how { width: min(100%, 820px); margin: 0 0 36px; }
+.potm-winners { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.potm-winner { padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+.potm-winner .potm-when { margin: 0 0 6px; color: var(--orange); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+.potm-winner .potm-by { margin-top: 8px; }
+.potm-featured { width: min(100%, 640px); }
+.potm-featured .potm-by { margin-top: 8px; }
+.potm-of { color: var(--orange); }
+.potm-rules .rules { width: min(100%, 820px); margin: 0 0 20px; }
+.potm-rules .rules p { color: #e6dcff; margin: 0 0 10px; }
+.potm-placeholder { padding: 12px 16px; border: 2px dashed var(--orange); border-radius: 12px; background: rgba(255, 157, 60, .08); }
+@media (max-width: 700px) {
+  .potm-entry { grid-template-columns: 40px minmax(0, 1fr); }
+  .potm-entry .potm-rank { width: 36px; height: 36px; font-size: 15px; }
+  .potm-entry > button, .potm-entry > .potm-nophoto { grid-column: 2; }
+  .potm-entry .potm-info { grid-column: 1 / -1; }
+}
+/* The mods and texture packs hub (hub.js): the list, an item's page, the upload form. */
+.hub-filter { display: flex; gap: 6px; margin: 0 4px 14px; }
+.hub-filter[hidden] { display: none; }
+.hub-filter button { font: inherit; font-size: 14px; font-weight: 700; color: #e6dcff; background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.hub-filter button[aria-pressed="true"] { color: #1a0f33; background: linear-gradient(90deg, var(--orange), var(--pink)); border-color: transparent; }
+.hub-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.hub-card { padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); min-width: 0; }
+.hub-card p { margin: 0 0 6px; }
+.hub-head a { color: var(--cream); font-weight: 800; text-decoration: none; }
+.hub-head a:hover { color: var(--orange); text-decoration: underline; }
+.hub-kind { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); }
+.hub-version { color: var(--muted); font-size: 14px; }
+.hub-meta, .hub-desc { color: var(--muted); font-size: 14.5px; overflow-wrap: anywhere; }
+.hub-download { padding: 8px 14px; margin: 4px 0 8px; }
+.hub-sha { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.hub-sha code { color: #e6dcff; }
+.hub-share, .hub-rules { width: min(100%, 820px); margin-top: 32px; }
+.hub-share[hidden], [data-hub-mine-box][hidden] { display: none; }
+.hub-share label { color: #e6dcff; }
+.hub-share input, .hub-share select, .hub-share textarea { font: inherit; max-width: 100%; }
+.hub-share progress { width: 100%; }
+.hub-item { width: min(100%, 860px); }
+.hub-item h1 { color: var(--cream); margin: 0 0 6px; overflow-wrap: anywhere; }
+.hub-item p { overflow-wrap: anywhere; }
+.hub-foot { padding: 0; gap: 10px; justify-content: flex-start; flex-wrap: wrap; }
+.hub-foot .like-slot { margin-left: 0; }
+.hub-report { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hub-report[hidden] { display: none; }
+.hub-report select, .hub-report input { font: inherit; font-size: 13px; }
