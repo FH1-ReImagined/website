@@ -18,6 +18,9 @@
 # Both builds add each item's like total from the website accounts service's public totals, the
 # repository variable LIKES_URL (https://forza.dyotson.dev/api/likes/counts; unset or unreachable:
 # no totals in that build, which goes on).
+# The mods and texture packs hub (data/hub.json, mods/<id>.html, their sitemap entries) comes from
+# the same service's /api/hub/items (tools/build_hub.py, HUB_URL or else LIKES_URL's site); while
+# the hub is off (HTTP 404) mods.html says it is not open yet and stays out of search engines.
 name: pages
 
 on:
@@ -106,6 +109,10 @@ jobs:
         with:
           path: .designs-cache
           key: designs-${{ steps.designs.outputs.cache-key }}
+      - name: Copy the mods and texture packs hub
+        env:
+          HUB_URL: ${{ vars.HUB_URL || vars.LIKES_URL }}
+        run: python tools/build_hub.py _site
       - name: Check the site
         run: python tools/check_site.py _site
       - uses: actions/configure-pages@v5
