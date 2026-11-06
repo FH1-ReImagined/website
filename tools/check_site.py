@@ -12,6 +12,7 @@ tRNS, IDAT and IEND chunks, nothing after the end). When Photo of the Month was
 ids that are months and ids, counts that are counts, and every photo it names one that
 data/gallery.json lists, with the same files.
   tools/check_site.py OUT"""
+import html.parser
 import json
 import re
 import sys
@@ -26,7 +27,8 @@ DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car
                "ratings", "createdAt", "src", "w", "h"}
 OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
 # Pages that are not in the navbar: no link in it is the current page.
-NOT_IN_NAV = {"profile.html", "photo-of-the-month-rules.html"}
+# mods.html joins the navbar when the hub opens (website #2): until then it is reached by address.
+NOT_IN_NAV = {"profile.html", "photo-of-the-month-rules.html", "mods.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
@@ -320,6 +322,79 @@ def check_potm(root):
     return bad
 
 
+class _Tags(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.bad = False
+        self.scripts = []
+
+    def handle_starttag(self, tag, attrs):
+        if any(name.startswith("on") for name, _ in attrs) or tag in ("iframe", "object", "embed", "base", "form"):
+            self.bad = True
+        if tag == "script":
+            self.scripts.append(dict(attrs).get("src"))
+
+
+def markup_from_text(text):
+    """Whether a page has an element a generated page never has: an event handler, a frame, a
+    form, or a script other than the site's own files and the one that sets the js class."""
+    p = _Tags()
+    p.feed(text)
+    inline = text.count('<script>document.documentElement.classList.add("js")</script>')
+    return p.bad or p.scripts.count(None) != inline or any(
+        s and not re.fullmatch(r"\.\./[a-z]+\.js", s) for s in p.scripts)
+
+
+HUB_KEYS = {"id", "kind", "title", "description", "version", "author", "created", "published", "size", "files",
+            "sha256", "folder", "likes", "download"}
+
+
+def check_hub(root):
+    """data/hub.json (tools/build_hub.py) and the item pages mods/<id>.html."""
+    where = "data/hub.json"
+    try:
+        doc = json.loads((root / where).read_text(encoding="utf-8"))
+    except ValueError:
+        return []
+    if not (isinstance(doc, dict) and doc.get("version") == 1 and isinstance(doc.get("items"), list)
+            and isinstance(doc.get("on"), bool)):
+        return [f"{where}: not version 1"]
+    bad, ids = [], set()
+    if "xuid" in json.dumps(doc).lower():
+        bad.append(f"{where}: contains 'xuid'")
+    for i, item in enumerate(doc["items"]):
+        at = f"{where} item {i}"
+        if not isinstance(item, dict) or not re.fullmatch(r"[A-Z2-7]{12}", str(item.get("id"))):
+            bad.append(f"{at}: no id")
+            continue
+        ids.add(item["id"])
+        if set(item) - HUB_KEYS:
+            bad.append(f"{at}: unexpected fields {sorted(set(item) - HUB_KEYS)}")
+        sha, folder = str(item.get("sha256")), str(item.get("folder"))
+        m = re.fullmatch(r"https://([^/?#@]+)/([0-9a-f]{64})/([A-Za-z0-9][A-Za-z0-9_-]{0,39})\.zip", str(item.get("download")))
+        if not m or m.group(2) != sha or m.group(3) != folder or m.group(1) == "forza.dyotson.dev":
+            bad.append(f"{at}: the download is not its SHA-256 and folder on the download host")
+        if item.get("kind") not in ("mod", "pack") or not all(is_count(item.get(k), 10 ** 12) for k in
+                                                               ("created", "published", "size", "files", "likes")):
+            bad.append(f"{at}: bad kind or counts")
+    pages = {p.stem for p in (root / "mods").glob("*.html")} if (root / "mods").is_dir() else set()
+    if doc["on"] and pages != ids:
+        bad.append(f"mods/: pages {sorted(pages ^ ids)} do not match data/hub.json")
+    if not doc["on"] and pages:
+        bad.append("mods/: item pages while the hub is off")
+    for page in sorted((root / "mods").glob("*.html")) if (root / "mods").is_dir() else []:
+        text = page.read_text(encoding="utf-8")
+        for ref in re.findall(r'(?:href|src)="([^"]+)"', text):
+            u = urlsplit(ref)
+            if u.scheme or ref.startswith(("#", "//", "mailto:")):
+                continue
+            if not (page.parent / u.path).resolve().is_file():
+                bad.append(f"mods/{page.name}: {ref}")
+        if markup_from_text(text):
+            bad.append(f"mods/{page.name}: markup from player text")
+    return bad
+
+
 def main():
     root = Path(sys.argv[1])
     bad = []
@@ -342,7 +417,7 @@ def main():
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
                  "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "account.html", "account.js",
                  "likes.js", "profile.html", "profile.js", "photo-of-the-month.html", "photo-of-the-month-rules.html",
-                 "potm.js",
+                 "potm.js", "mods.html", "hub.js",
                  "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
@@ -421,6 +496,8 @@ def main():
         bad += check_designs(root)
     if (root / "data" / "photo-of-the-month.json").is_file():
         bad += check_potm(root)
+    if (root / "data" / "hub.json").is_file():
+        bad += check_hub(root)
     print("\n".join(bad) or f"ok: {sum(1 for _ in root.rglob('*') if _.is_file())} files")
     return 1 if bad else 0
 
