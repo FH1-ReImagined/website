@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
 document.documentElement.classList.add("js");
+try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement.classList.add("signed-in"); } catch (e) {}
 (function () {
   var go = {
     mountains: "features.html#mountains",
@@ -66,29 +67,18 @@ document.documentElement.classList.add("js");
 <div class="scene" aria-hidden="true">
   <div class="sky"></div>
   <div class="stars"></div>
+  <div class="glow"></div>
   <svg class="sun" viewBox="0 0 160 160" width="160" height="160">
     <defs>
-      <linearGradient id="sunfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a0"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient>
+      <linearGradient id="sunfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a0"/><stop offset="1" stop-color="#ff7a45"/></linearGradient>
       <mask id="sunbars"><rect width="160" height="160" fill="#fff"/><rect y="86" width="160" height="4" fill="#000"/><rect y="104" width="160" height="6" fill="#000"/><rect y="124" width="160" height="8" fill="#000"/></mask>
     </defs>
     <circle cx="80" cy="80" r="76" fill="url(#sunfill)" mask="url(#sunbars)"/>
   </svg>
   <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
   <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+  <svg class="hero-road" viewBox="0 0 1600 400" preserveAspectRatio="none"><polygon class="asphalt" points="1140,0 1160,0 1530,400 770,400"/><path class="edge" d="M1140 0L770 400M1160 0L1530 400"/><polygon class="dash" points="1141.2,347.8 1158.8,347.8 1160.0,400.0 1140.0,400.0"/><polygon class="dash" points="1143.9,228.6 1156.1,228.6 1156.8,258.1 1143.2,258.1"/><polygon class="dash" points="1145.2,170.2 1154.8,170.2 1155.2,186.0 1144.8,186.0"/><polygon class="dash" points="1145.9,135.6 1154.1,135.6 1154.3,145.5 1145.7,145.5"/><polygon class="dash" points="1146.5,112.7 1153.5,112.7 1153.7,119.4 1146.3,119.4"/><polygon class="dash" points="1146.8,96.4 1153.2,96.4 1153.3,101.3 1146.7,101.3"/><polygon class="dash" points="1147.1,84.2 1152.9,84.2 1153.0,87.9 1147.0,87.9"/><polygon class="dash" points="1147.3,74.8 1152.7,74.8 1152.7,77.7 1147.3,77.7"/></svg>
 </div>
-
-<svg class="road" aria-hidden="true" focusable="false">
-  <path class="road-edge" d=""/>
-  <path class="road-asphalt" d=""/>
-  <path class="road-line" d=""/>
-  <path class="road-driven" d=""/>
-</svg>
-<svg class="car" aria-hidden="true" focusable="false" viewBox="0 0 24 44" width="24" height="44">
-  <rect x="2" y="2" width="20" height="40" rx="8" fill="#ff5470"/>
-  <rect x="5" y="12" width="14" height="9" rx="3" fill="#ffe9c0"/>
-  <rect x="5" y="28" width="14" height="6" rx="2" fill="#ffe9c0" opacity=".8"/>
-  <rect x="4" y="3" width="4" height="3" rx="1.5" fill="#fff4c2"/><rect x="16" y="3" width="4" height="3" rx="1.5" fill="#fff4c2"/>
-</svg>
 
 <header class="topbar">
   <a class="brand" href="index.html" aria-current="page"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
@@ -99,7 +89,6 @@ document.documentElement.classList.add("js");
       <summary>Online</summary>
       <div class="menu-panel" id="nav-online">
         <div class="menu-list">
-          <a href="online.html">Horizon World</a>
           <a href="leaderboards.html">Leaderboards</a>
           <a href="mods.html">Mods and Textures</a>
         </div>
@@ -113,55 +102,61 @@ document.documentElement.classList.add("js");
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
-          <a href="https://discord.gg/yu7zScdcWw">Discord</a>
         </div>
       </div>
     </details>
-    <a class="nav-cta" href="download.html">Download</a>
-    <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">GitHub</a>
+    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
     <a class="nav-account" href="account.html">Sign in</a>
+    <a class="nav-cta" href="download.html">Download</a>
   </nav>
 </header>
 
 <main>
-  <section id="festival" class="stop left">
-    <div class="panel hero">
-      <p class="kicker">Mile 0 &middot; The festival</p>
-      <h1><span class="h1-small">Forza Horizon 1</span><span class="h1-big">ReImagined</span></h1>
+  <section id="festival" class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="hero-tag"><b>Free</b>Recompiled for PC &middot; Online again</p>
+      <h1 id="hero-title"><span class="h1-small">Forza Horizon 1</span><span class="h1-big">ReImagined</span></h1>
       <p class="lead">The original 2012 Forza Horizon, recompiled to run natively on Windows and Linux, and online again.</p>
-      <p class="aside">The official online services closed on 22 August 2023 (<a href="https://forza.net/news/forza-horizon-online-services-closure">Turn 10's notice</a>). The public server has Horizon World, shared free roam for up to 8 players, with leaderboards and Rivals. You can host your own.</p>
       <div class="cta">
-        <a class="btn primary" href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/releases/latest">
+        <a class="btn primary ico ico-download" href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/releases/latest">
           <span>Download for Windows and Linux</span><small>Latest release</small>
         </a>
-        <a class="btn ghost" href="online.html">
-          <span>Play online</span><small>Horizon World</small>
+        <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw">
+          <span>Join the Discord</span><small>Help, news and online sessions</small>
         </a>
       </div>
-      <p class="notice"><strong>No game code or data is included.</strong> The launcher builds the game on your PC from your own copy.</p>
+      <p class="hero-note ico ico-shield"><span><strong>No game code or data is included.</strong> The launcher builds the game on your PC from your own copy.</span></p>
     </div>
+    <a class="scroll-hint" href="#glance"><span>Scroll to know more</span><span class="mouse" aria-hidden="true"></span></a>
   </section>
 
-  <section id="routes" class="stop right" aria-label="On this site">
-    <ul class="doors">
-      <li><a href="online.html"><b>Play online</b><span>Up to 8 players on the public server, or host your own.</span></a></li>
-      <li><a href="gallery.html"><b>Community</b><span>The newest shots from players, straight from photo mode.</span></a></li>
-      <li><a href="download.html"><b>Install</b><span>The launcher builds the game on your PC from your own copy.</span></a></li>
-    </ul>
+  <section id="glance" class="facts-band" aria-label="At a glance">
+    <dl class="facts">
+      <div><dt>8</dt><dd>players per online world, on the public server or your own</dd></div>
+      <div><dt>23</dt><dd>DLC packages, with Title Update 4</dd></div>
+      <div><dt>5 min</dt><dd>to build the game from your own copy</dd></div>
+      <div><dt>0</dt><dd>game files in the download</dd></div>
+    </dl>
   </section>
 
-  <section id="again" class="stop right">
-    <div class="panel">
-      <p class="kicker">Mile 3 &middot; Online again</p>
-      <h2>Back online</h2>
-      <p class="aside">Horizon World is the first playlist under Multiplayer, Find Game: up to 8 players per world on the public server, with leaderboards and Rivals, friends and chat, and a co-op festival. Photos and designs players share appear on this site.</p>
+  <section id="again" class="stop split" aria-labelledby="again-h">
+    <div class="section-head">
+      <p class="kicker">Online again</p>
+      <h2 id="again-h">Back online</h2>
+      <p class="aside">The official online services closed on 22 August 2023 (<a href="https://forza.net/news/forza-horizon-online-services-closure">Turn 10's notice</a>). The public server brings them back: Horizon World is the first playlist under Multiplayer, Find Game.</p>
+      <ul class="ticks">
+        <li>Shared free roam for up to 8 players per world</li>
+        <li>Leaderboards and Rivals, friends and chat</li>
+        <li>A co-op festival to race with friends</li>
+        <li>The public server, or one you host</li>
+      </ul>
       <div class="cta">
-        <a class="btn ghost" href="online.html"><span>Horizon World</span><small>How to play online</small></a>
+        <a class="btn ghost" href="online.html"><span>How to play online</span><small>Settings, Online</small></a>
         <a class="btn ghost" href="leaderboards.html"><span>Leaderboards</span><small>On a map of Colorado</small></a>
       </div>
       <!-- TODO(trailer): there is no trailer yet. When one exists, put its link or embed here. -->
     </div>
-    <ul class="cards" aria-label="Online play">
+    <ul class="cards media-pair" aria-label="Online play">
       <li><figure>
         <button type="button" data-full="images/forza-horizon-world-online.jpg" data-cap="Online free roam"><img src="images/forza-horizon-world-online.jpg" alt="The Horizon World online playlist lobby" width="1280" height="720" loading="lazy"></button>
         <figcaption><b>Horizon World</b>Shared free roam on the public server.</figcaption>
@@ -173,26 +168,53 @@ document.documentElement.classList.add("js");
     </ul>
   </section>
 
-  <section id="photos" class="stop left" data-photos-section hidden>
-    <div class="panel">
-      <p class="kicker">Mile 6 &middot; Photo mode</p>
-      <h2>Community photos</h2>
-      <p class="aside">The newest shots from players. Share yours from photo mode in the game.</p>
-      <div class="cta">
-        <a class="btn ghost" href="gallery.html"><span>See all photos</span><small>The community gallery</small></a>
+  <section id="explore" class="stop" aria-labelledby="explore-h">
+    <div class="section-head">
+      <p class="kicker">On your PC</p>
+      <h2 id="explore-h">The whole festival, and more</h2>
+      <p class="aside">Single player with Title Update 4 and the DLC, co-op with friends, and mods and HD textures from players.</p>
+    </div>
+    <ul class="tiles">
+      <li><a class="tile" href="features.html">
+        <span class="tile-pic"><img src="images/forza-race.jpg" alt="" width="1280" height="720" loading="lazy"></span>
+        <span class="tile-body"><span class="tile-kicker">Features</span><b>Race your way</b><span>Keyboard, gamepad or wheel. FSR, DLSS, ultrawide and the frame rate you set.</span></span>
+      </a></li>
+      <li><a class="tile" href="features.html#extras">
+        <span class="tile-pic"><img src="images/coop-race.webp" alt="" width="1280" height="360" loading="lazy"></span>
+        <span class="tile-body"><span class="tile-kicker">Co-op Festival</span><b>Race it together</b><span>Festival events with friends; your career results carry over after you quit.</span></span>
+      </a></li>
+      <li><a class="tile" href="mods.html">
+        <span class="tile-pic"><img src="images/hd-before-after.webp" alt="" width="1412" height="450" loading="lazy"></span>
+        <span class="tile-body"><span class="tile-kicker">Mods and Textures</span><b>Make it yours</b><span>Mods and HD texture packs made by players, checked for malware before they are listed.</span></span>
+      </a></li>
+    </ul>
+  </section>
+
+  <section id="photos" class="stop" data-photos-section hidden aria-labelledby="photos-h">
+    <div class="section-head row">
+      <div>
+        <p class="kicker">Photo mode</p>
+        <h2 id="photos-h">Community photos</h2>
+        <p class="aside">The newest shots from players. Share yours from photo mode in the game.</p>
       </div>
+      <a class="link-more" href="gallery.html">See all photos</a>
     </div>
     <ul class="shots photos" data-photos="3" aria-label="The newest community photos"></ul>
   </section>
 
-  <section id="ready" class="stop right">
-    <div class="panel finish">
-      <p class="kicker">The open highway</p>
-      <h2>Ready to drive?</h2>
-      <p class="aside">Point it at your copy of the game. About 5 minutes. It updates itself.</p>
+  <section id="ready" class="stop" aria-labelledby="ready-h">
+    <div class="finale">
+      <div>
+        <p class="kicker">The open highway</p>
+        <h2 id="ready-h">Ready to drive?</h2>
+        <p class="aside">Point the launcher at your copy of the game. About 5 minutes. It updates itself.</p>
+      </div>
       <div class="cta">
-        <a class="btn primary" href="download.html">
+        <a class="btn primary ico ico-download" href="download.html">
           <span>Install with the launcher</span><small>Windows and Linux</small>
+        </a>
+        <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw">
+          <span>Join the Discord</span><small>Help and online sessions</small>
         </a>
       </div>
       <p class="notice"><strong>Remember:</strong> you need your own copy of the game.</p>
@@ -201,9 +223,44 @@ document.documentElement.classList.add("js");
 </main>
 
 <footer>
-  <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. Forza, Forza Horizon, Xbox and Xbox LIVE are trademarks of Microsoft. It contains no game code or assets; you must own the game. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
-  <p>Made with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a>, our fork of the <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue SDK</a>. Community: <a href="https://discord.gg/yu7zScdcWw">Discord</a>.</p>
-  <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+      <p>The original 2012 Forza Horizon, recompiled for Windows and Linux, and online again. Built with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a> (our <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue</a> fork).</p>
+      <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw"><span>Join the Discord</span></a>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Play</p>
+      <ul>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="online.html">Play online</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Community</p>
+      <ul>
+        <li><a href="gallery.html">Photos</a></li>
+        <li><a href="designs.html">Designs</a></li>
+        <li><a href="leaderboards.html">Leaderboards</a></li>
+        <li><a href="mods.html">Mods and Textures</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Project</p>
+      <ul>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">Source code</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/website">Website source</a></li>
+        <li><a href="press.html">Press kit</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/PRIVACY.md">Privacy policy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-legal">
+    <p>Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios. Forza, Forza Horizon, Xbox and Xbox LIVE are trademarks of Microsoft. It contains no game code or assets; you must own the game. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+    <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  </div>
 </footer>
 
 <dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>

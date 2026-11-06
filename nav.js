@@ -1,14 +1,14 @@
-// The navbar, and its account link's hint (at the end). Below 700px the Menu button opens the full list; Escape closes it
-// and focus returns to the button. Wider than that, Online and Community open on
-// hover, focus or click. The html.js class (set in the page) is what hides the
-// narrow list: without this script the links stay on the page.
+// The navbar, its look on scroll, and the signed-in hint (at the end). At 940px and below the Menu
+// button opens the full list; Escape closes it and focus returns to the button. Wider than that,
+// Online and Community open on hover, focus or click. The html.js class (set in the page) is what
+// hides the narrow list: without this script the links stay on the page.
 (function () {
   "use strict";
   var btn = document.querySelector(".nav-toggle");
   var nav = document.getElementById("site-nav");
   if (!btn || !nav) return;
 
-  var mq = window.matchMedia("(max-width: 700px)");
+  var mq = window.matchMedia("(max-width: 940px)");
   var menus = nav.querySelectorAll("details.menu");
 
   function narrow() { return mq.matches; }
@@ -16,6 +16,7 @@
   function setExpanded(open) {
     btn.setAttribute("aria-expanded", open ? "true" : "false");
     nav.classList.toggle("is-open", open);
+    solid();
     if (open && narrow()) {
       for (var i = 0; i < menus.length; i++) menus[i].open = true;
     }
@@ -104,6 +105,14 @@
     }, 0);
   });
 
+  // The bar is see-through over the landing page's sky until the page scrolls or the menu opens.
+  var bar = document.querySelector(".topbar");
+  function solid() {
+    if (bar) bar.classList.toggle("solid", window.scrollY > 24 || btn.getAttribute("aria-expanded") === "true");
+  }
+  window.addEventListener("scroll", solid, { passive: true });
+  solid();
+
   function onWidth() {
     setExpanded(false);
     if (!narrow()) closeMenus(null);
@@ -112,13 +121,22 @@
   else if (mq.addListener) mq.addListener(onWidth);
 })();
 
-// The account link says "Account" for a visitor who signed in on this browser (account.js sets
-// the hint when /api/me answers). Only the account page calls the API.
+// The signed-in hint: for a visitor who signed in on this browser (account.js sets the
+// fh-signed-in hint when /api/me answers, and likes.js and account.js drop it when the service
+// says signed out), the account link says "Account" instead of "Sign in" and Download leaves the
+// navbar: they have the game already. The page's head sets html.signed-in from the same hint
+// before the first paint. Only the account page calls the API.
 (function () {
   "use strict";
-  var link = document.querySelector(".nav-account");
-  if (!link) return;
-  try {
-    if (localStorage.getItem("fh-signed-in") === "1") link.textContent = "Account";
-  } catch (e) { /* storage off: it stays "Sign in" */ }
+  function set(on) {
+    document.documentElement.classList.toggle("signed-in", !!on);
+    var link = document.querySelector(".nav-account");
+    if (link) link.textContent = on ? "Account" : "Sign in";
+    var download = document.querySelector("#site-nav .nav-cta");
+    if (download) download.hidden = !!on;
+  }
+  var on = false;
+  try { on = localStorage.getItem("fh-signed-in") === "1"; } catch (e) { /* storage off: signed out */ }
+  set(on);
+  window.FHNav = { signedIn: set };
 })();

@@ -53,7 +53,13 @@ SOFTWARE.
 
 ## Third-party material
 
-The site has no third-party scripts, fonts or stylesheets: it is plain HTML, CSS and JavaScript.
+The site has no third-party scripts or stylesheets: it is plain HTML, CSS and JavaScript, served
+from this site alone.
+
+The fonts in `fonts/` are Saira Condensed (ExtraBold) and Saira Semi Condensed (SemiBold, Bold),
+Copyright 2020 The Saira Project Authors (https://github.com/Omnibus-Type/Saira), the Latin
+subsets as Google Fonts serves them. They are under the SIL Open Font License, version 1.1, in
+[`fonts/OFL.txt`](fonts/OFL.txt), not under this site's license.
 
 The screenshots in `images/` show the game, which is (c) Microsoft. They illustrate the site;
 this license grants no rights to the game's content. The logo and the leaderboards map are the
