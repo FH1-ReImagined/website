@@ -6,7 +6,8 @@
 // gallery.html shows them all. Titles and gamertags are the players' own text: they go in with
 // textContent only. Each photo has its likes (likes.js) and a link to its owner's profile page
 // (profile.html?p=<owner>, the player id the server publishes). A list with data-photos-owner (the
-// profile page) shows only the photos of the player its address names.
+// profile page) shows only the photos of the player its address names. On gallery.html
+// (data-photos-live) the newest approved photos show before the next build has them (live.js).
 //
 // The viewer shows one picture of its list at a time and slides to the next or the one before:
 // the arrow buttons, the arrow keys (Home and End for the ends), or a swipe or drag. It holds
@@ -325,13 +326,21 @@
     document.dispatchEvent(new Event("photos:shown"));
   }
 
+  // A page that lists the photos as soon as they are approved (data-photos-live, gallery.html)
+  // merges the server's live feed into the build's (live.js); without one it shows the build's.
+  var fromFeed = !!document.querySelector("[data-photos-live]") && window.FHLive;
   fetch("data/gallery.json", { cache: "no-cache" })
     .then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
     })
-    .then(function (doc) {
-      show(doc && Array.isArray(doc.photos) ? doc.photos.filter(usable) : [], false);
-    })
-    .catch(function () { show([], true); });
+    .then(function (doc) { return doc && Array.isArray(doc.photos) ? doc.photos.filter(usable) : []; },
+          function () { return null; })
+    .then(function (built) {
+      if (!fromFeed) return built === null ? show([], true) : show(built, false);
+      return window.FHLive.merge("photo", built || []).then(function (photos) {
+        if (built === null && !photos.length) show([], true);
+        else show(photos, false);
+      });
+    });
 })();
