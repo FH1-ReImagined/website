@@ -231,6 +231,9 @@
     });
   });
 
+  // designs.html (data-designs-live) merges the server's live feed into the build's (live.js), so
+  // a design shows as soon as it is screened and goes as soon as it is hidden.
+  var fromFeed = !!document.querySelector("[data-designs-live]") && window.FHLive;
   fetch("data/designs.json", { cache: "no-cache" })
     .then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
@@ -240,6 +243,12 @@
       designs = doc && Array.isArray(doc.designs) ? doc.designs.filter(usable) : [];
     })
     .catch(function () { failed = true; })
+    .then(function () {
+      if (!fromFeed) return;
+      return window.FHLive.merge("design", designs).then(function (merged) {
+        if (merged !== designs) { designs = merged; failed = false; }
+      });
+    })
     .then(function () {
       render();
       if (/^#design-/.test(location.hash)) fromAddress();
