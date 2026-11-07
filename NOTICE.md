@@ -56,11 +56,16 @@ SOFTWARE.
 The site has no third-party scripts or stylesheets: it is plain HTML, CSS and JavaScript, served
 from this site alone.
 
-The fonts in `fonts/` are Saira Condensed (ExtraBold) and Saira Semi Condensed (SemiBold, Bold),
-Copyright 2020 The Saira Project Authors (https://github.com/Omnibus-Type/Saira), the Latin
-subsets as Google Fonts serves them. They are under the SIL Open Font License, version 1.1, in
-[`fonts/OFL.txt`](fonts/OFL.txt), not under this site's license.
+The fonts in `fonts/` are under the SIL Open Font License, version 1.1, not under this site's
+license:
+
+- Bitter (ExtraBold), Copyright 2011 The Bitter Project Authors
+  (https://github.com/solmatas/BitterPro), in [`fonts/OFL-Bitter.txt`](fonts/OFL-Bitter.txt);
+- Saira Semi Condensed (SemiBold, Bold), Copyright 2020 The Saira Project Authors
+  (https://github.com/Omnibus-Type/Saira), in [`fonts/OFL-Saira.txt`](fonts/OFL-Saira.txt).
+
+Both are the Latin subsets as Google Fonts serves them.
 
 The screenshots in `images/` show the game, which is (c) Microsoft. They illustrate the site;
-this license grants no rights to the game's content. The logo and the leaderboards map are the
-project's own work.
+this license grants no rights to the game's content. The logo (`images/logo-original.png`, and the
+smaller copies made from it) and the leaderboards map are the project's own work.

@@ -22,7 +22,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
 <title>Forza Horizon 1: ReImagined - Native PC Recomp, Online Again</title>
 <meta name="description" content="The original 2012 Forza Horizon, statically recompiled to run natively on Windows and Linux, and online again: Horizon World for up to 8 players, leaderboards and Rivals on a public server you can also host. The launcher builds the game on your PC from your own copy. No game code or data included.">
 <link rel="canonical" href="https://forza.dyotson.dev/">
-<meta name="theme-color" content="#140d2e">
+<meta name="theme-color" content="#1c140f">
 <meta property="og:title" content="Forza Horizon 1: ReImagined - the 2012 Forza Horizon, recompiled for PC and online again">
 <meta property="og:description" content="The original 2012 Forza Horizon, recompiled to run natively on Windows and Linux, and online again: Horizon World, leaderboards and Rivals on a public server or your own. No game code or data included: you bring your own copy.">
 <meta property="og:type" content="website">
@@ -59,6 +59,8 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
 }
 </script>
 <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="icon" href="images/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="landing">
@@ -69,11 +71,8 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
   <div class="stars"></div>
   <div class="glow"></div>
   <svg class="sun" viewBox="0 0 160 160" width="160" height="160">
-    <defs>
-      <linearGradient id="sunfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a0"/><stop offset="1" stop-color="#ff7a45"/></linearGradient>
-      <mask id="sunbars"><rect width="160" height="160" fill="#fff"/><rect y="86" width="160" height="4" fill="#000"/><rect y="104" width="160" height="6" fill="#000"/><rect y="124" width="160" height="8" fill="#000"/></mask>
-    </defs>
-    <circle cx="80" cy="80" r="76" fill="url(#sunfill)" mask="url(#sunbars)"/>
+    <defs><radialGradient id="sunfill" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#fff6e2"/><stop offset=".55" stop-color="#ffe0a8"/><stop offset="1" stop-color="#f2b765"/></radialGradient></defs>
+    <circle cx="80" cy="80" r="76" fill="url(#sunfill)"/>
   </svg>
   <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
   <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
@@ -81,7 +80,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
 </div>
 
 <header class="topbar">
-  <a class="brand" href="index.html" aria-current="page"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <a class="brand" href="index.html" aria-current="page"><img src="images/logo-mark.webp" alt="" width="58" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
   <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
   <nav id="site-nav" aria-label="Site">
     <a href="features.html">Features</a>
@@ -114,6 +113,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
 <main>
   <section id="festival" class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
+      <img class="hero-logo" src="images/logo-mark.webp" alt="" width="194" height="120">
       <p class="hero-tag"><b>Free</b>Recompiled for PC &middot; Online again</p>
       <h1 id="hero-title"><span class="h1-small">Forza Horizon 1</span><span class="h1-big">ReImagined</span></h1>
       <p class="lead">The original 2012 Forza Horizon, recompiled to run natively on Windows and Linux, and online again.</p>
@@ -225,7 +225,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
 <footer>
   <div class="foot-top">
     <div class="foot-brand">
-      <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="36" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+      <a class="brand" href="index.html"><img src="images/logo-mark.webp" alt="" width="58" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
       <p>The original 2012 Forza Horizon, recompiled for Windows and Linux, and online again. Built with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a> (our <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue</a> fork).</p>
       <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw"><span>Join the Discord</span></a>
     </div>
