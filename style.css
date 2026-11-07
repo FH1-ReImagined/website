@@ -113,7 +113,7 @@ html.js .landing .topbar:not(.solid)::before { opacity: 0; }
 .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--cream); white-space: nowrap; flex-shrink: 0; }
 .brand img { display: block; width: auto; height: 36px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .35)); }
 .brand span { display: flex; flex-direction: column; font: 700 15px/1.05 var(--font-ui); letter-spacing: .01em; }
-.brand b { font: 800 17px/1 var(--font-headline); letter-spacing: -.005em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand b { font: 800 17px/1.25 var(--font-headline); padding-bottom: .12em; letter-spacing: -.005em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .brand:hover { color: var(--cream); }
 nav { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; }
 nav a, .menu summary {
