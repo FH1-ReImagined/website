@@ -13,7 +13,7 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `online.html` | how to play online (Horizon World) and the newest player designs; not in the navbar, linked from the landing page, the FAQ and the footer |
 | `download.html` | installing with the launcher |
 | `nav.js`, `script.js`, `style.css` | the navbar (Features, Online, Community; then Discord, Sign in or Account, and Download, which a visitor who signed in on this browser does not see), the landing page's sunset as it scrolls away, and the look |
-| `fonts/` | Saira Condensed and Saira Semi Condensed (SIL Open Font License, `fonts/OFL.txt`) for headlines, labels and buttons; the text is in the system font |
+| `fonts/` | Bitter for headlines and Saira Semi Condensed for labels and buttons (SIL Open Font License, `fonts/OFL-*.txt`); the text is in the system font. The headline font is one CSS variable, `--font-headline`: `style.css` says how to put another in its place |
 | `leaderboards.html`, `leaderboards.js` | the public server's leaderboards on a map of Colorado |
 | `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the photo viewer for every picture button: it slides through the pictures of its list (arrow buttons and keys, Home and End, swipe or drag), loads the neighbours ahead, and shows a picture only once it has loaded |
 | `designs.html`, `designs.js` | the paint jobs and vinyl groups players share, with their share codes (also the Online page's newest three) |
@@ -23,7 +23,7 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `profile.html`, `profile.js` | a player's page, `profile.html?p=<player id>`: their photos and designs and the likes they got, from the site's own data files (the player id is the one the server publishes on its leaderboards, never a XUID). Nothing about the web account. Not indexed |
 | `press.html` | the press kit: facts, logo, social preview, screenshots and links |
 | `faq.html` | common questions (recomp or emulator, your own copy, online, Steam Deck, Mac, requirements), with FAQPage structured data |
-| `images/` | screenshots, the logo, the social preview (drawn from the logo and plain text, no game assets), the map (`colorado-map.svg`) |
+| `images/` | screenshots; the logo (`logo-original.png`, and made from it: `logo-mark.webp`/`.png` for the navbar, the landing page and the footer, `logo.png` and `logo.svg` square, `favicon-32.png`, `apple-touch-icon.png`); the social preview (drawn from the logo and plain text, no game assets); the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
 | `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py`, `build_designs.py` and `build_hub.py` and their tests `test_build_gallery.py`, `test_build_designs.py` and `test_build_hub.py`, and `test_account_page.py` (not published) |
