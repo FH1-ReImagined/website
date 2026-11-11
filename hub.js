@@ -23,7 +23,7 @@
     refused: "Refused", review: "Checked: waiting for a maintainer", live: "Listed", hidden: "Hidden"
   };
   var ERRORS = {
-    "link your game first": "Link your account to your game first: in the launcher, Settings > Online > Website account.",
+    "link your game first": "Link your account to your game first: upload one speed trap to the public server from the game (single player is fine), then in the launcher, Settings > Online > Website account.",
     "only your own work": "Only your own work can be shared.",
     "wait until your other uploads are checked": "Wait until your other uploads are checked.",
     "the queue is full: try again later": "Too many uploads are waiting. Try again later.",
@@ -80,6 +80,7 @@
   function errorText(r) {
     var e = r.doc && typeof r.doc.error === "string" ? r.doc.error : "";
     if (r.status === 401) return "You are signed out. Sign in on your account page.";
+    if (r.doc && typeof r.doc.message === "string" && r.doc.message.trim()) return r.doc.message.trim().slice(0, 300);
     if (r.status === 413) return "The zip is too big.";
     return ERRORS[e] || (e ? "Not done: " + e + "." : "That did not work. Try again later.");
   }
@@ -154,7 +155,7 @@
         if (r.status === 401) try { localStorage.removeItem(HINT); } catch (e) { /* storage off */ }
         if (form) form.hidden = true;
         if (note) note.hidden = false;
-        if (r.status === 403 && note) say(note, ERRORS["link your game first"]);
+        if (r.status === 403 && note) say(note, r.doc && typeof r.doc.message === "string" && r.doc.message.trim() ? r.doc.message.trim().slice(0, 300) : ERRORS["link your game first"]);
         return;
       }
       if (form) { form.hidden = false; form.dataset.max = String(num(r.doc.max_bytes)); }

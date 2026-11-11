@@ -12,17 +12,19 @@ Checks:
 - ?error=busy is shown, and the address is cleaned;
 - the game link: the launcher's #link=<token> asks to link the gamertag the service names (as
   text), or to sign in first; a claimed request says to confirm in the launcher, a linked one
-  says so, a token the service does not know is explained; a linked account shows its game and
-  Unlink, and a frozen link says why;
+  says so, a token the service does not know is explained, and a refusal the service words itself
+  (its message, or else its error) is shown as it is; an account with no game says linking needs
+  one speed trap uploaded to the public server (single player, no lobby); a linked account shows
+  its game and Unlink, and a frozen link says why;
 - the other pages never call /api/ for a visitor who did not sign in;
 - likes (likes.js) for a visitor who signed in: linked to the game, a thumbs-up pressed for what
   the key liked and none on its own items, with the live totals, and a click that takes a like
-  back and moves the total; not linked, a link to the account page; signed out since, the hint
-  goes;
+  back and moves the total; a like the service refuses with its own message shows that message;
+  not linked, a link to the account page; signed out since, the hint goes;
 - My items: a linked account lists its game's photos and designs with their state and likes
   (player text as text, thumbnails only for public ones), links to its public page (found in the
-  site's data files), says when its likes do not count yet, and deletes an item after a confirm
-  (asking for a recent sign-in when the service says so).
+  site's data files), says when its likes do not count yet, drops the speed trap note, and deletes
+  an item after a confirm (asking for a recent sign-in when the service says so).
 
   python3 tools/test_account_page.py   # needs no packages
 
@@ -53,6 +55,9 @@ CONFIG = {"status": 200, "data": {
     "socialaccount": {"providers": [{"id": "discord", "name": "Discord", "flows": ["provider_redirect"]},
                                     {"id": "github", "name": "GitHub", "flows": ["provider_redirect"]}]}}}
 TOKENS = {"P" * 43: "pending", "C" * 43: "claimed", "L" * 43: "linked"}
+SPEED_TRAP = "Upload one speed trap to the public server first, then try again."
+REFUSALS = {"M" * 43: {"error": "upload a speed trap first", "message": SPEED_TRAP},
+            "Q" * 43: {"error": "upload a speed trap first"}}
 LINKED = {"state": "frozen", "gamertag": "DriverA", "since": "2026-11-03"}
 ACTIVE = {"state": "active", "gamertag": "DriverA", "since": "2026-11-03", "counted": False}
 OWNER = "0a1b2c3d4e5f"   # the player id of DriverA's photos in the site's data
@@ -95,7 +100,12 @@ LIKES_TEST = r"""
     var b = document.querySelector("#photo-OTHERBBBBBBB button.like");
     if (!b) return done(out);
     b.click();
-    setTimeout(function () { out.after = controls(); done(out); }, 1500);
+    setTimeout(function () {
+      var note = document.querySelector(".like-note");
+      out.after = controls();
+      out.note = note && !note.hidden ? note.textContent : "";
+      done(out);
+    }, 1500);
   }, 1500);
 })();
 """
@@ -116,6 +126,7 @@ ITEMS_TEST = r"""
   }
   setTimeout(function () {
     var out = { rows: rows(), shown: !document.getElementById("items").hidden,
+                needs: !document.getElementById("link-needs").hidden,
                 note: document.getElementById("items-note").hidden ? "" : document.getElementById("items-note").textContent,
                 profile: document.getElementById("items-profile").hidden ? null : document.getElementById("items-profile-link").getAttribute("href") };
     var del = document.querySelector("#items-list > li button");
@@ -197,6 +208,7 @@ class Api:
     """What the accounts service answers, by scenario: none (a static copy), out, in, linked
     (frozen), active (a usable link) or gone (the hint says signed in, the service does not)."""
     mode = "out"
+    like_refusal = None  # (status, doc) POST /api/likes answers instead, when set
     calls = []
     posts = []
     deletes = 0
@@ -240,6 +252,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
         Api.posts.append((self.path, body))
+        if self.path == "/api/likes" and Api.mode == "active" and Api.like_refusal:
+            return self.reply(Api.like_refusal[0], json.dumps(Api.like_refusal[1]).encode(), "application/json")
         if self.path == "/api/likes" and Api.mode == "active":
             ok = self.headers.get("Content-Type") == "application/json" and "X-CSRFToken" in self.headers
             doc = {"ok": True, "on": body.get("on"), "counted": True} if ok else {"error": "refused"}
@@ -250,6 +264,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.reply(403, b'{"error": "sign in again"}', "application/json")
             return self.reply(200, b'{"ok": true, "deleted": true}', "application/json")
         if self.path == "/api/link/peek" and Api.mode == "in":
+            if body.get("token") in REFUSALS:
+                return self.reply(409, json.dumps(REFUSALS[body["token"]]).encode(), "application/json")
             state = TOKENS.get(body.get("token"))
             if state is None:
                 return self.reply(404, b'{"error": "not found"}', "application/json")
@@ -330,8 +346,18 @@ def main():
             check("is linked to this account" in d.text(), "a linked one says so")
             d = dom_of(browser, base + "/account.html#link=" + "X" * 43, profile)
             check("That link or code does not work" in d.text(), "an unknown token is explained")
-            check(d.shown("link-code-form") and "Not linked. Link it from the launcher" in d.text()
+            check(d.shown("link-code-form") and "Not linked. Upload one speed trap to the public server" in d.text()
                   and not d.shown("game-actions"), "an account with no game: the code form and how to link")
+            needs = next((a for t, a in d.tags if a.get("id") == "link-needs"), None)
+            check(d.shown("link-needs") and "Single player is fine; no lobby or online play is needed." in d.text()
+                  and "another record on the leaderboards" in d.text(),
+                  "linking needs one speed trap on the public server, single player, and old records count")
+            check(needs is not None and any(t == "a" and a.get("href") == "faq.html#q10" for t, a in d.tags),
+                  "with a link to the FAQ's steps")
+            d = dom_of(browser, base + "/account.html#link=" + "M" * 43, profile)
+            check(SPEED_TRAP in d.text(), "a refusal with the service's own message shows it as it is")
+            d = dom_of(browser, base + "/account.html#link=" + "Q" * 43, profile)
+            check("Upload a speed trap first" in d.text(), "a refusal with only an error we do not know shows the error")
             Api.mode = "out"
             Api.posts.clear()
             d = dom_of(browser, base + "/account.html#link=" + "P" * 43, profile)
@@ -380,6 +406,10 @@ def main():
             check(sorted(set(c.split("?")[0] for c in Api.calls)) == ["/api/auth/browser/v1/config", "/api/likes/counts",
                                                                      "/api/likes/mine"],
                   "the page asked for this visitor's likes and the totals once each (and the CSRF cookie)")
+            Api.like_refusal = (409, {"error": "upload a speed trap first", "message": SPEED_TRAP})
+            r = results_of(browser, base + "/likes-test.html", profile) or {}
+            Api.like_refusal = None
+            check(r.get("note") == SPEED_TRAP, "a like the service refuses shows the service's message as it is")
             Api.mode = "in"
             r = results_of(browser, base + "/likes-test.html", profile) or {}
             other = (r.get("before") or {}).get(P_OTHER) or {}
@@ -412,7 +442,9 @@ def main():
                   and "Untitled" in rows[1]["text"] and "Waiting for the automatic check" in rows[2]["text"],
                   "a held photo and a pending design: their state, no thumbnail")
             check(r.get("profile") == f"profile.html?p={OWNER}", "a link to the player's public page, from the site's data")
-            check("count in the public totals once" in (r.get("note") or ""), "it says the key's likes do not count yet")
+            check("count in the public totals once" in (r.get("note") or "") and "speed trap" in (r.get("note") or ""),
+                  "it says the key's likes do not count yet, until a speed trap is uploaded")
+            check(r.get("needs") is False, "a linked game: no speed trap note by the link code")
             check(r.get("reauth") is True, "a delete without a recent sign-in asks for one")
             check(Api.posts[:2] == [("/api/me/items/delete", {"kind": "photo", "id": P_MINE})] * 2,
                   "Delete sends the item (after the confirm)")

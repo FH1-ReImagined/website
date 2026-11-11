@@ -59,7 +59,7 @@
   var ITEM_KINDS = { photo: "Photo", design: "Design" };
   var GAME_STATES = {
     frozen: "This link is on hold: your game's key changed. The maintainer checks such links; ask on Discord.",
-    waiting: "The public server has not seen your game for a long time. Play online once and the link works again.",
+    waiting: "The public server has not seen your game for a long time. Drive through a speed trap with the public server selected (single player is fine) and the link works again.",
     banned: "This game is banned from the public server's shared features, so the link does nothing for now."
   };
 
@@ -109,6 +109,14 @@
       return r.json().then(function (doc) { return { status: r.status, doc: doc }; },
                            function () { return { status: r.status, doc: null }; });
     });
+  }
+
+  // What the accounts service said about a refusal: its own sentence (message) as it is, else our
+  // text for its error, else its error as it is. Shown with textContent only.
+  function serverText(doc, known) {
+    if (doc && typeof doc.message === "string" && doc.message.trim()) return doc.message.trim().slice(0, 300);
+    var code = doc && typeof doc.error === "string" ? doc.error.trim() : "";
+    return known[code] || (code && code !== "refused" ? code.charAt(0).toUpperCase() + code.slice(1, 300) : "");
   }
 
   function firstError(doc, fallback) {
@@ -173,11 +181,12 @@
         .toLocaleDateString(undefined, { dateStyle: "medium", timeZone: "UTC" }) + ")";
       note.textContent = GAME_STATES[link.state] || "";
     } else {
-      game.textContent = "Not linked. Link it from the launcher: Settings > Online > Website account. Until then this account can only browse.";
+      game.textContent = "Not linked. Upload one speed trap to the public server from the game (single player is fine), then link it from the launcher: Settings > Online > Website account. Until then this account can only browse.";
       note.textContent = "";
     }
     note.hidden = !note.textContent;
     document.getElementById("game-actions").hidden = !link;
+    document.getElementById("link-needs").hidden = !!(link && link.state === "active");
     document.getElementById("unlink-reauth").hidden = true;
     if (link && link.state === "active") {
       loadItems(link);
@@ -248,7 +257,7 @@
     });
     document.getElementById("items-empty").hidden = items.length > 0;
     var note = document.getElementById("items-note");
-    note.textContent = doc.counted ? "" : "Your likes are saved, and count in the public totals once your game has played online on 2 days, 72 hours after its first online sign-in.";
+    note.textContent = doc.counted ? "" : "Your likes are saved, and count in the public totals once your game has uploaded a speed trap to the public server.";
     note.hidden = !note.textContent;
     box.hidden = false;
     profileLink(items);
@@ -303,8 +312,7 @@
   }
 
   function linkError(r) {
-    var code = r.doc && typeof r.doc.error === "string" ? r.doc.error : "";
-    linkDone(LINK_ERRORS[code] || "The link did not work. Try again.");
+    linkDone(serverText(r.doc, LINK_ERRORS) || "The link did not work. Try again.");
   }
 
   // What the service says about the request: ask to claim it, follow it, or say how it ended.

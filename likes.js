@@ -7,7 +7,7 @@
 // and draw a working thumbs-up:
 // - linked to their game: pressed for what the game key liked, none on their own items; a click
 //   sends POST /api/likes with the CSRF token. The total moves only when the key's likes count
-//   in public (a key counts some days after its first online sign-in);
+//   in public (a key counts once its game has uploaded a speed trap to the public server);
 // - not linked yet, or signed out since: the thumbs-up leads to the account page, as for
 //   everybody else.
 // The totals and ids are numbers and ids from the site's own files or the API: nothing here is
@@ -22,7 +22,7 @@
     "link your game first": "Link your game to like: in the launcher, Settings > Online > Website account.",
     "not available": "Likes are not available for your game.",
     "this link needs the operator": "Your game link is on hold. See your account page.",
-    "play online first": "Play online once, then try again.",
+    "play online first": "Drive through a speed trap in the game with the public server selected (single player is fine), then try again.",
     "your own": "That one is yours.",
     "not found": "That one is no longer shared.",
     "too many requests": "Too many likes for now. Try again later."
@@ -30,6 +30,13 @@
   var states = {};
   var note = null, noteTimer = null;
 
+  // A refusal's text: the service's own sentence (message) as it is, else ours for its error, else
+  // its error as it is. Shown with textContent only.
+  function serverText(doc) {
+    if (doc && typeof doc.message === "string" && doc.message.trim()) return doc.message.trim().slice(0, 300);
+    var code = doc && typeof doc.error === "string" ? doc.error.trim() : "";
+    return ERRORS[code] || (code && code !== "refused" ? code.charAt(0).toUpperCase() + code.slice(1, 300) : "");
+  }
   function signedIn() {
     try { return localStorage.getItem(HINT) === "1"; } catch (e) { return false; }
   }
@@ -177,7 +184,7 @@
         draw(s, st);
         var again = s.querySelector("button");
         if (again) again.focus();
-        if (on && !r.doc.counted) say("Liked. Your likes count in public a few days after your game first played online.");
+        if (on && !r.doc.counted) say("Liked. Your likes count in public once your game has uploaded a speed trap to the public server.");
         return;
       }
       if (r.status === 401) {
@@ -186,8 +193,7 @@
         say("You are signed out. Sign in on the account page to like.");
         return;
       }
-      var error = r.doc && typeof r.doc.error === "string" ? r.doc.error : "";
-      say(ERRORS[error] || (r.status === 429 ? ERRORS["too many requests"] : "That did not work. Try again."));
+      say(serverText(r.doc) || (r.status === 429 ? ERRORS["too many requests"] : "That did not work. Try again."));
     }, function () {
       b.disabled = false;
       say("That did not work. Try again.");
