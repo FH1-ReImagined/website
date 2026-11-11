@@ -25,7 +25,7 @@
     refused: "Refused", review: "Checked: waiting for a maintainer", live: "Listed", hidden: "Hidden"
   };
   var ERRORS = {
-    "link your game first": "Link your account to your game first: upload one speed trap to the public server from the game (single player is fine), then in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online).",
+    "link your game first": "Link your account to your game first: your game needs one speed trap or record on the public server, from any time (single player is fine), then in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online).",
     "this link needs the operator": "Your game link is on hold: your game's key changed. See your account page, or ask on Discord.",
     "play online first": "Upload one speed trap first: in the game, with the public server picked, drive through any speed trap, then try again.",
     "only your own work": "Only your own work can be shared.",

@@ -203,7 +203,7 @@
         .toLocaleDateString(undefined, { dateStyle: "medium", timeZone: "UTC" }) + ")";
       note.textContent = GAME_STATES[link.state] || "";
     } else {
-      game.textContent = "Not linked. Upload one speed trap to the public server from the game (single player is fine), then link it from the launcher, with the main public server picked: Online > Online > Website account (before launcher 0.2.9: Settings > Online > Website account). Until then this account can only browse.";
+      game.textContent = "Not linked. Your game needs one speed trap or record on the public server, from any time (single player is fine), then link it from the launcher, with the main public server picked: Online > Online > Website account (before launcher 0.2.9: Settings > Online > Website account). Until then this account can only browse.";
       note.textContent = "";
     }
     note.hidden = !note.textContent;
@@ -279,7 +279,7 @@
     });
     document.getElementById("items-empty").hidden = items.length > 0;
     var note = document.getElementById("items-note");
-    note.textContent = doc.counted ? "" : "Your likes are saved, and count in the public totals once your game has uploaded a speed trap to the public server.";
+    note.textContent = doc.counted ? "" : "Your likes are saved, and count in the public totals once your game has a speed trap or record on the public server.";
     note.hidden = !note.textContent;
     box.hidden = false;
     profileLink(items);

@@ -30,8 +30,8 @@ DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car
 OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
 # Pages that are not in the navbar: no link in it is the current page. online.html (how to play
 # online) is reached from the landing page, the FAQ and the footer, the Photo of the Month rules
-# from that event's page.
-NOT_IN_NAV = {"profile.html", "online.html", "photo-of-the-month-rules.html"}
+# from that event's page. Photo of the Month itself is hidden until the contest runs (README.md).
+NOT_IN_NAV = {"profile.html", "online.html", "photo-of-the-month.html", "photo-of-the-month-rules.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
@@ -451,9 +451,7 @@ def main():
     for loc in ("https://forza.dyotson.dev/", "https://forza.dyotson.dev/features.html",
                 "https://forza.dyotson.dev/online.html", "https://forza.dyotson.dev/download.html",
                 "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html",
-                "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html",
-                "https://forza.dyotson.dev/photo-of-the-month.html",
-                "https://forza.dyotson.dev/photo-of-the-month-rules.html"):
+                "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
     # The account page: never indexed, and its sign-in forms post to the accounts service only.
@@ -479,6 +477,9 @@ def main():
             bad.append(f"{page.name}: needs a title, description and canonical URL")
         if "Official links:" not in text:
             bad.append(f"{page.name}: the footer needs the Official links note")
+        # A page kept out of search engines is not in the sitemap either.
+        if 'content="noindex"' in text and f"https://forza.dyotson.dev/{page.name}" in sm:
+            bad.append(f"sitemap.xml: {page.name} has noindex, so it is not for search engines")
         found = re.search(r'<header class="topbar">.*?</header>', text, re.S)
         if not found:
             bad.append(f"{page.name}: no navbar")

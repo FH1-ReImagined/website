@@ -410,8 +410,8 @@ def check_pages(browser, site, service, profiles):
         check(len([1 for t, a, stack in page.tags if t == "li" and "potm-before" in stack]) == 2, "with its standings")
 
         rules = dom_of(browser, base + "/photo-of-the-month-rules.html", profiles)
-        days = [t for t, stack in rules.texts if t == "14"]
-        check(len(days) >= 1 and "October 2026" in [t for t, _ in rules.texts], "rules: the account age and the first month")
+        days = [t for t, stack in rules.texts if t == "14" or "days old" in t]
+        check(not days and "October 2026" in [t for t, _ in rules.texts], "rules: the first month, and no account age for votes")
         check(any(t == "p" and a.get("class") == "potm-placeholder" for t, a, _ in rules.tags), "rules: the prize is a placeholder")
         check(any("Entering and voting are free" in t for t, _ in rules.texts), "rules: entering and voting are free")
 

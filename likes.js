@@ -7,7 +7,7 @@
 // and draw a working thumbs-up:
 // - linked to their game: pressed for what the game key liked, none on their own items; a click
 //   sends POST /api/likes with the CSRF token. The total moves only when the key's likes count
-//   in public (a key counts once its game has uploaded a speed trap to the public server);
+//   in public (a key counts once its game has a speed trap or record on the public server, from any time);
 // - not linked yet, the link on hold, or the game not allowed to like: the thumbs-up shows the
 //   reason the service gave for /api/likes/mine when it is pressed (link the game in the
 //   launcher, the link is on hold, upload a speed trap first, ...);
@@ -22,7 +22,7 @@
   var KINDS = { photo: "photo", design: "design", mod: "mod", pack: "pack" };
   var NOUN = { photo: "photo", design: "design", mod: "mod", pack: "texture pack" };
   var ERRORS = {
-    "link your game first": "Link your game to like: in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online). Your game needs one speed trap uploaded to the public server first.",
+    "link your game first": "Link your game to like: in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online). Your game needs one speed trap or record on the public server first, from any time.",
     "not available": "Likes are not available for your game.",
     "this link needs the operator": "Your game link is on hold: your game's key changed. See your account page, or ask on Discord.",
     "play online first": "Drive through a speed trap in the game with the public server selected (single player is fine), then try again.",
@@ -203,7 +203,7 @@
         draw(s, st);
         var again = s.querySelector("button");
         if (again) again.focus();
-        if (on && !r.doc.counted) say("Liked. Your likes count in public once your game has uploaded a speed trap to the public server.");
+        if (on && !r.doc.counted) say("Liked. Your likes count in public once your game has a speed trap or record on the public server.");
         return;
       }
       if (r.status === 401) {

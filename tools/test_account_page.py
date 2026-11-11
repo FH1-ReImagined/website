@@ -429,7 +429,7 @@ def main():
             check("is linked to this account" in d.text(), "a linked one says so")
             d = dom_of(browser, base + "/account.html#link=" + "X" * 43, profile)
             check("That link or code does not work" in d.text(), "an unknown token is explained")
-            check(d.shown("link-code-form") and "Not linked. Upload one speed trap to the public server" in d.text()
+            check(d.shown("link-code-form") and "Not linked. Your game needs one speed trap or record on the public server, from any time" in d.text()
                   and not d.shown("game-actions"), "an account with no game: the code form and how to link")
             check("Settings > Online > Website account" not in d.text().replace(
                       "before launcher 0.2.9: Settings > Online > Website account", ""),
