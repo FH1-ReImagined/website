@@ -10,6 +10,9 @@ show, every listed preview there and no unlisted one, and PNGs of pixels alone (
 tRNS, IDAT and IEND chunks, nothing after the end). When the mods and texture packs hub was
 (tools/build_hub.py), data/hub.json and the item pages mods/<id>.html: only the fields the pages
 show, downloads from the download host by SHA-256, one page per item, no markup from player text.
+When Photo of the Month was (tools/build_potm.py), data/photo-of-the-month.json: only the fields
+the pages show, months and ids that are months and ids, counts that are counts, and every photo
+it names one that data/gallery.json lists, with the same files.
   tools/check_site.py OUT"""
 import html.parser
 import json
@@ -26,8 +29,9 @@ DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car
                "ratings", "createdAt", "src", "w", "h"}
 OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
 # Pages that are not in the navbar: no link in it is the current page. online.html (how to play
-# online) is reached from the landing page, the FAQ and the footer.
-NOT_IN_NAV = {"profile.html", "online.html"}
+# online) is reached from the landing page, the FAQ and the footer, the Photo of the Month rules
+# from that event's page.
+NOT_IN_NAV = {"profile.html", "online.html", "photo-of-the-month-rules.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
@@ -318,6 +322,82 @@ def check_hub(root):
     return bad
 
 
+POTM_KEYS = {"version", "generated", "from", "featured", "winners", "months"}
+POTM_PHOTO_FILES = {"src", "w", "h", "thumb", "tw", "th", "owner"}
+POTM_WINNER_KEYS = {"month", "id", "title", "gamertag", "votes", "reached", "confirmed"} | POTM_PHOTO_FILES
+POTM_MONTH_KEYS = {"month", "start", "end", "state", "accountDays", "entries", "top", "winner"}
+POTM_ENTRY_KEYS = {"rank", "id", "title", "gamertag", "votes", "likes", "reached"} | POTM_PHOTO_FILES
+POTM_STATES = {"upcoming", "open", "verifying", "confirmed", "no winner"}
+MONTH_RE = re.compile(r"[0-9]{4}-(0[1-9]|1[0-2])")
+PHOTO_ID_RE = re.compile(r"[A-Za-z2-7]{12}")
+
+
+def check_potm(root):
+    path = root / "data" / "photo-of-the-month.json"
+    text = path.read_text(encoding="utf-8")
+    bad = [f"data/photo-of-the-month.json: contains {w!r}" for w in ("xuid",) if w in text.lower()]
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return bad  # reported with the other data files
+    where = "data/photo-of-the-month.json"
+    if not (isinstance(doc, dict) and doc.get("version") == 1 and isinstance(doc.get("winners"), list)
+            and isinstance(doc.get("months"), list)):
+        return bad + [f"{where}: not version 1"]
+    if set(doc) - POTM_KEYS:
+        bad.append(f"{where}: unexpected fields {sorted(set(doc) - POTM_KEYS)}")
+    if doc.get("from") is not None and not (isinstance(doc["from"], str) and MONTH_RE.fullmatch(doc["from"])):
+        bad.append(f"{where}: from is not a month")
+    try:
+        photos = {p["id"]: p for p in json.loads((root / "data" / "gallery.json").read_text(encoding="utf-8"))["photos"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        photos = {}
+
+    def photo(item, at, keys, counts):
+        out = []
+        if not isinstance(item, dict) or not PHOTO_ID_RE.fullmatch(str(item.get("id"))):
+            return [f"{at}: no id"]
+        if set(item) - keys:
+            out.append(f"{at}: unexpected fields {sorted(set(item) - keys)}")
+        if not (isinstance(item.get("title"), str) and isinstance(item.get("gamertag"), str)):
+            out.append(f"{at}: no title or gamertag")
+        if not all(is_count(item.get(k), MAX_TIME) for k in counts):
+            out.append(f"{at}: bad counts or times")
+        out += check_owner_and_likes(at, item)
+        files = {k: item[k] for k in POTM_PHOTO_FILES if k in item}
+        if files:
+            listed = photos.get(item["id"])
+            if not listed or any(listed.get(k) != v for k, v in files.items()) or "src" not in files:
+                out.append(f"{at}: photo files that data/gallery.json does not list")
+        return out
+
+    for i, w in enumerate(doc["winners"]):
+        at = f"{where} winner {i}"
+        if not isinstance(w, dict) or not MONTH_RE.fullmatch(str(w.get("month"))):
+            bad.append(f"{at}: no month")
+            continue
+        bad += photo(w, at, POTM_WINNER_KEYS, ("votes", "reached", "confirmed"))
+    f = doc.get("featured")
+    if f is not None:
+        bad += photo(f, f"{where} featured", POTM_WINNER_KEYS, ("votes", "reached", "confirmed"))
+        if not isinstance(f, dict) or "src" not in f or not doc["winners"] or doc["winners"][0].get("id") != f.get("id"):
+            bad.append(f"{where}: featured is not the newest winner with its photo")
+    for i, m in enumerate(doc["months"]):
+        at = f"{where} month {i}"
+        if not isinstance(m, dict) or not MONTH_RE.fullmatch(str(m.get("month"))) or m.get("state") not in POTM_STATES:
+            bad.append(f"{at}: no month or state")
+            continue
+        if set(m) - POTM_MONTH_KEYS:
+            bad.append(f"{at}: unexpected fields {sorted(set(m) - POTM_MONTH_KEYS)}")
+        if not all(is_count(m.get(k), MAX_TIME) for k in ("start", "end", "accountDays", "entries")):
+            bad.append(f"{at}: bad counts or times")
+        if m.get("winner") is not None and not PHOTO_ID_RE.fullmatch(str(m["winner"])):
+            bad.append(f"{at}: bad winner")
+        for j, e in enumerate(m.get("top") if isinstance(m.get("top"), list) else []):
+            bad += photo(e, f"{at} entry {j}", POTM_ENTRY_KEYS, ("rank", "votes", "likes", "reached"))
+    return bad
+
+
 def main():
     root = Path(sys.argv[1])
     bad = []
@@ -340,6 +420,7 @@ def main():
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
                  "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "account.html", "account.js",
                  "likes.js", "online.js", "profile.html", "profile.js", "mods.html", "hub.js",
+                 "photo-of-the-month.html", "photo-of-the-month-rules.html", "potm.js",
                  "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
@@ -349,6 +430,10 @@ def main():
     m = re.search(r'<section\b[^>]*\bid="photos"[^>]*>', index)
     if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
         bad.append('index.html: <section id="photos"> must start hidden')
+    # The same for its Photo of the Month (#potm): potm.js shows it only when there is a winner.
+    m = re.search(r'<section\b[^>]*\bid="potm"[^>]*>', index)
+    if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
+        bad.append('index.html: <section id="potm"> must start hidden')
     # The players-online badge starts hidden too: online.js shows it only with a fresh count above 0.
     m = re.search(r'<a\b[^>]*\bid="online-now"[^>]*>', index)
     if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
@@ -366,7 +451,9 @@ def main():
     for loc in ("https://forza.dyotson.dev/", "https://forza.dyotson.dev/features.html",
                 "https://forza.dyotson.dev/online.html", "https://forza.dyotson.dev/download.html",
                 "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html",
-                "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html"):
+                "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html",
+                "https://forza.dyotson.dev/photo-of-the-month.html",
+                "https://forza.dyotson.dev/photo-of-the-month-rules.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
     # The account page: never indexed, and its sign-in forms post to the accounts service only.
@@ -416,6 +503,8 @@ def main():
         bad += check_designs(root)
     if (root / "data" / "hub.json").is_file():
         bad += check_hub(root)
+    if (root / "data" / "photo-of-the-month.json").is_file():
+        bad += check_potm(root)
     print("\n".join(bad) or f"ok: {sum(1 for _ in root.rglob('*') if _.is_file())} files")
     return 1 if bad else 0
 

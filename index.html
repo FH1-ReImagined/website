@@ -98,6 +98,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
       <div class="menu-panel" id="nav-community">
         <div class="menu-list">
           <a href="gallery.html">Photos</a>
+          <a href="photo-of-the-month.html">Photo of the Month</a>
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
@@ -191,6 +192,18 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
     </ul>
   </section>
 
+  <section id="potm" class="stop" data-potm-featured hidden aria-labelledby="potm-h">
+    <div class="section-head row">
+      <div>
+        <p class="kicker">Monthly event</p>
+        <h2 id="potm-h">Photo of the Month <span class="potm-of" data-potm-month></span></h2>
+        <p class="aside">The latest winner: the shot with the most votes in its month. Entering and voting are free.</p>
+      </div>
+      <a class="link-more" href="photo-of-the-month.html">Vote this month</a>
+    </div>
+    <div class="potm-featured" data-potm-photo></div>
+  </section>
+
   <section id="photos" class="stop" data-photos-section hidden aria-labelledby="photos-h">
     <div class="section-head row">
       <div>
@@ -243,6 +256,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
       <p class="foot-h">Community</p>
       <ul>
         <li><a href="gallery.html">Photos</a></li>
+        <li><a href="photo-of-the-month.html">Photo of the Month</a></li>
         <li><a href="designs.html">Designs</a></li>
         <li><a href="leaderboards.html">Leaderboards</a></li>
         <li><a href="mods.html">Mods and Textures</a></li>
@@ -269,6 +283,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
 <script src="script.js"></script>
 <script src="likes.js"></script>
 <script src="photos.js"></script>
+<script src="potm.js"></script>
 <script src="online.js"></script>
 </body>
 </html>

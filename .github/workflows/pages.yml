@@ -21,6 +21,10 @@
 # The mods and texture packs hub (data/hub.json, mods/<id>.html, their sitemap entries) comes from
 # the same service's /api/hub/items (tools/build_hub.py, HUB_URL or else LIKES_URL's site); while
 # the hub is off (HTTP 404) mods.html says it is not open yet and stays out of search engines.
+# Photo of the Month (data/photo-of-the-month.json: the winners, the standings, the home page's
+# winner) comes from the same service's /api/potm/ (tools/build_potm.py), at the repository
+# variable POTM_URL or else LIKES_URL's site. A service with no contest, or one that cannot be
+# read, gives an empty file and the build goes on.
 name: pages
 
 on:
@@ -113,6 +117,10 @@ jobs:
         env:
           HUB_URL: ${{ vars.HUB_URL || vars.LIKES_URL }}
         run: python tools/build_hub.py _site
+      - name: Copy Photo of the Month
+        env:
+          POTM_URL: ${{ vars.POTM_URL || vars.LIKES_URL }}
+        run: python tools/build_potm.py _site
       - name: Check the site
         run: python tools/check_site.py _site
       - uses: actions/configure-pages@v5

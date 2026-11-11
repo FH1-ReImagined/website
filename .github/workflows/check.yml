@@ -4,6 +4,7 @@
 # headless Chrome (tools/test_build_gallery.py, tools/test_build_designs.py), and the account page
 # against a stand-in for the accounts service's /api/ (tools/test_account_page.py), and the mods
 # and texture packs hub's build and pages against a stand-in for its /api/hub/ (tools/test_build_hub.py), and
+# Photo of the Month's build and pages against a stand-in for its /api/potm/ (tools/test_build_potm.py), and
 # the photos and designs shown before the next build, with the partial build and its webhook
 # (tools/test_live_community.py), and the landing page's players-online badge against fixture feeds
 # (tools/test_online_count.py).
@@ -33,5 +34,6 @@ jobs:
       - run: python tools/test_build_designs.py
       - run: python tools/test_account_page.py
       - run: python tools/test_build_hub.py
+      - run: python tools/test_build_potm.py
       - run: python tools/test_live_community.py
       - run: python tools/test_online_count.py
