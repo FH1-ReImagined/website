@@ -339,7 +339,7 @@ def main():
             bad.append(f"{f.relative_to(root)}: {e}")
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
                  "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "account.html", "account.js",
-                 "likes.js", "profile.html", "profile.js", "mods.html", "hub.js",
+                 "likes.js", "online.js", "profile.html", "profile.js", "mods.html", "hub.js",
                  "robots.txt", "sitemap.xml", ".nojekyll",
                  "LICENSE", "NOTICE.md"):
         if not (root / name).is_file():
@@ -349,6 +349,10 @@ def main():
     m = re.search(r'<section\b[^>]*\bid="photos"[^>]*>', index)
     if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
         bad.append('index.html: <section id="photos"> must start hidden')
+    # The players-online badge starts hidden too: online.js shows it only with a fresh count above 0.
+    m = re.search(r'<a\b[^>]*\bid="online-now"[^>]*>', index)
+    if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
+        bad.append('index.html: <a id="online-now"> must start hidden')
     # The same for the Online page's #designs: designs.js shows it only when there are designs.
     online = (root / "online.html").read_text(encoding="utf-8") if (root / "online.html").is_file() else ""
     m = re.search(r'<section\b[^>]*\bid="designs"[^>]*>', online)
