@@ -7,11 +7,15 @@
 # the full build), checks it (tools/check_site.py) and switches the site to it at once, the way
 # the full build does: a symlink to the release, replaced in one rename. A feed that cannot be
 # read, a failed check or a site that is not served through such a symlink changes nothing.
+# Photo of the Month is built again after the photos (tools/build_potm.py), since it names gallery
+# photos with their files: a photo deleted from the gallery leaves its standings too, and an
+# accounts service that cannot be read changes nothing.
 # The sitemap is left as the release has it: it lists the pages and the mods hub's items, never
 # photos or designs.
 #
 # Environment (the paths default to a builder that keeps the releases under /www):
 #   GALLERY_FEED_URL, LIKES_URL   as for the full build (both builders read them)
+#   POTM_URL       as for the full build (else LIKES_URL's site; neither: no contest)
 #   SITE_LINK      the symlink the web server serves                       (/www/current)
 #   RELEASES       the folder of the releases                              (/www/releases)
 #   REPO           the checkout of this repository the full build uses     (the one this file is in)
@@ -56,10 +60,11 @@ trap 'rm -rf "$new" "$SITE_LINK.next"' EXIT
 # never touched.
 cp -al "$current" "$new"
 rm -rf "$new/photos" "$new/designs"
-rm -f "$new/data/gallery.json" "$new/data/designs.json"
+rm -f "$new/data/gallery.json" "$new/data/designs.json" "$new/data/photo-of-the-month.json"
 
 python3 "$REPO/tools/build_gallery.py" "$new" --cache "$GALLERY_CACHE" --require-feed
 python3 "$REPO/tools/build_designs.py" "$new" --cache "$DESIGNS_CACHE" --require-feed
+POTM_URL="${POTM_URL:-${LIKES_URL:-}}" python3 "$REPO/tools/build_potm.py" "$new" --require
 python3 "$REPO/tools/check_site.py" "$new" >/dev/null || { python3 "$REPO/tools/check_site.py" "$new" | head -20; say "the check failed: nothing switched"; exit 1; }
 
 ln -sfn "$new" "$SITE_LINK.next"

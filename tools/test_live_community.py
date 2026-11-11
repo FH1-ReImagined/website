@@ -9,8 +9,9 @@
 - tools/site_hook.py: a signed call runs the build command, a bad, stale or replayed signature
   and a bad body do not, and a burst of calls makes at most two builds;
 - tools/build_community.sh: it builds into a copy of the served release and switches the symlink,
-  leaves the served release untouched, and changes nothing when a feed cannot be read or the
-  site is not served through a symlink.
+  leaves the served release untouched, builds Photo of the Month again after the photos (a
+  photo the gallery no longer has leaves it), and changes nothing when a feed or the accounts
+  service cannot be read or the site is not served through a symlink.
 
   python3 tools/test_live_community.py   # needs Pillow (tools/requirements.txt) and flock
 """
@@ -264,12 +265,20 @@ def test_partial_build(tmp):
     jpeg(first / "photos" / "OLDOLDOLDOLD.jpg", 640, 360, (1, 2, 3))
     (first / "data" / "gallery.json").write_text('{"version":1,"generated":1,"photos":[]}\n')
     (first / "data" / "designs.json").write_text('{"version":1,"generated":1,"designs":[]}\n')
+    # The served release's Photo of the Month names a photo, with its files, that the next gallery
+    # no longer has (deleted since the full build).
+    old_winner = {"month": "2026-10", "id": "OLDOLDOLDOLD", "title": "Old", "gamertag": "Someone", "votes": 3,
+                  "reached": 1, "confirmed": 1, "src": "photos/OLDOLDOLDOLD.jpg", "w": 640, "h": 360}
+    (first / "data" / "photo-of-the-month.json").write_text(json.dumps(
+        {"version": 1, "generated": 1, "from": "2026-10", "featured": old_winner, "winners": [old_winner], "months": []}))
+    potm_before = (first / "data" / "photo-of-the-month.json").read_text()
     (www / "current").symlink_to(first)
     served_before = (first / "data" / "gallery.json").read_text()
     env = dict(os.environ, SITE_LINK=str(www / "current"), RELEASES=str(www / "releases"), BUILD_LOCK=str(tmp / "lock"),
                GALLERY_CACHE=str(tmp / "gc"), DESIGNS_CACHE=str(tmp / "dc"))
     env.pop("GALLERY_FEED_URL", None)
     env.pop("LIKES_URL", None)
+    env.pop("POTM_URL", None)
     script = str(TOOLS / "build_community.sh")
     p = subprocess.run([script], env=env, capture_output=True, text=True)
     now = (www / "current").resolve()
@@ -280,6 +289,13 @@ def test_partial_build(tmp):
     check(os.path.samefile(now / "index.html", first / "index.html"), "unchanged files are shared with the release before")
     check(json.loads((now / "data" / "gallery.json").read_text())["photos"] == [] and not (now / "photos" / "OLDOLDOLDOLD.jpg").exists(),
           "the photos are built again in the new release")
+    potm = json.loads((now / "data" / "photo-of-the-month.json").read_text())
+    check(potm["featured"] is None and potm["winners"] == [] and (first / "data" / "photo-of-the-month.json").read_text() == potm_before,
+          "Photo of the Month is built again after the photos (no service here: empty), the served one untouched")
+    p = subprocess.run([script], env=dict(env, POTM_URL="http://127.0.0.1:9/"), capture_output=True, text=True)
+    leftovers = [x.name for x in (www / "releases").iterdir() if x.resolve() not in (now, first.resolve())]
+    check(p.returncode != 0 and (www / "current").resolve() == now and not leftovers,
+          "an accounts service that cannot be read for Photo of the Month switches nothing")
     p = subprocess.run([script], env=dict(env, GALLERY_FEED_URL="http://127.0.0.1:9/community/gallery.json"),
                        capture_output=True, text=True)
     leftovers = [x.name for x in (www / "releases").iterdir() if x.resolve() not in (now, first.resolve())]

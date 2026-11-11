@@ -100,7 +100,8 @@ instead of at its next full build: `tools/site_hook.py` takes the game server's 
 (forza-live's `FORZA_SITE_NOTIFY_URL` and `FORZA_SITE_NOTIFY_SECRET`, an HMAC-SHA256 over the
 timestamp and the body) and runs `tools/build_community.sh`, which builds only the photos and
 designs into a copy of the release being served and switches to it in one rename, with the same
-feeds, caches and like totals as the full build. The full build stays as it is, as the fallback.
+feeds, caches and like totals as the full build. Photo of the Month is built again after the photos
+(it names gallery photos with their files), from the same `POTM_URL` or `LIKES_URL`. The full build stays as it is, as the fallback.
 Both scripts describe their settings at the top; the hook belongs on the builder's private network.
 
 The map and its pins are built from a copy of the game in the game's repository
