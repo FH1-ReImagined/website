@@ -943,6 +943,18 @@ button.like:disabled { opacity: .6; cursor: progress; }
 .item-body b { color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-body span { color: var(--muted); font-size: 14px; }
 .item-list .btn { padding: 9px 14px; flex: none; font-size: 15px; }
+/* Phones: never the full-width buttons of small screens (".btn { width: 100% }" under 600 px), which
+   left the text a column one word wide and pushed Delete off the screen. Under 480 px the title
+   wraps to two lines and Delete goes under the text, at the right of its row. */
+.item-list li .btn { width: auto; }
+@media (max-width: 480px) {
+  .item-list li { flex-wrap: wrap; gap: 8px 12px; padding: 12px 0; }
+  .item-list img { width: 88px; height: 50px; align-self: flex-start; }
+  .item-body { flex: 1 1 calc(100% - 100px); }
+  .item-body:first-child { flex-basis: 100%; }
+  .item-body b { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  .item-list li .btn { margin-left: auto; padding: 8px 16px; }
+}
 
 /* ---- the mods and texture packs hub (hub.js): the list, an item's page, the upload form ---- */
 .hub-filter { display: flex; gap: 8px; margin: 0 0 18px; }

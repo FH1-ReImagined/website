@@ -31,7 +31,10 @@ Checks:
 - My items: a linked account lists its game's photos and designs with their state and likes
   (player text as text, thumbnails only for public ones), links to its public page (found in the
   site's data files), says when its likes do not count yet, drops the speed trap note, and deletes
-  an item after a confirm (asking for a recent sign-in when the service says so).
+  an item after a confirm (asking for a recent sign-in when the service says so);
+- on a phone (the list in a 360 px frame) no row is wider than the screen, each Delete is inside
+  its row and clear of the text, and the text keeps its width (not one word per line); at 900 px
+  Delete stays beside the text.
 
   python3 tools/test_account_page.py   # needs no packages
 
@@ -155,6 +158,51 @@ ITEMS_TEST = r"""
   }, 2500);
 })();
 """
+# The page in a frame of a phone's width (a headless window is never narrower than 500 px), and what
+# its rows look like there: their boxes, and how many lines the "Photo · On the site" line takes.
+NARROW_TEST = r"""
+(function () {
+  var frame = document.querySelector("iframe");
+  function box(e) {
+    var r = e.getBoundingClientRect();
+    return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width };
+  }
+  setTimeout(function () {
+    var d = frame.contentDocument, w = frame.contentWindow;
+    var rows = Array.prototype.map.call(d.querySelectorAll("#items-list > li"), function (li) {
+      var meta = li.querySelector(".item-body span");
+      return { li: box(li), body: box(li.querySelector(".item-body")), button: box(li.querySelector("button")),
+               wide: li.scrollWidth > li.clientWidth,
+               lines: Math.round(meta.getBoundingClientRect().height / parseFloat(w.getComputedStyle(meta).lineHeight)) };
+    });
+    var pre = document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify({ width: w.innerWidth, scroll: d.documentElement.scrollWidth,
+                                       client: d.documentElement.clientWidth, rows: rows });
+    document.body.append(pre);
+  }, 3500);
+})();
+"""
+
+
+def narrow_page(site, width):
+    """A page holding items-test-frame.html (account.html, signed in) in a frame width px wide."""
+    (site / "narrow-test.js").write_text(NARROW_TEST)
+    name = "narrow-%d.html" % width
+    (site / name).write_text('<!doctype html><meta charset="utf-8"><body style="margin:0">'
+                             '<iframe src="items-test-frame.html" width="%d" height="1400" style="border:0"></iframe>'
+                             '<script src="narrow-test.js"></script></body>' % width)
+    return "/" + name
+
+
+def inside(a, b):
+    return a["l"] >= b["l"] - 0.5 and a["r"] <= b["r"] + 0.5 and a["t"] >= b["t"] - 0.5 and a["b"] <= b["b"] + 0.5
+
+
+def apart(a, b):
+    return a["r"] <= b["l"] + 0.5 or b["r"] <= a["l"] + 0.5 or a["b"] <= b["t"] + 0.5 or b["b"] <= a["t"] + 0.5
+
+
 ME = {"id": "K7Q2-XM4P", "created": "2026-11-03", "methods": ["discord", "email"], "sessions": 2, "recent": True,
       "link": None, "events": [{"at": "2026-11-03T12:00:00Z", "event": "<img src=x onerror=alert(1)>signed in"}]}
 
@@ -554,6 +602,27 @@ def main():
                   "Delete sends the item (after the confirm)")
             check("is deleted" in (r.get("message") or "") and len(r.get("after") or []) == 2,
                   "a delete that worked says so and the list follows")
+
+            print("-- My items on a phone")
+            page = (site / "account.html").read_text(encoding="utf-8")
+            page = page.replace('<script src="account.js"></script>',
+                                '<script src="likes-setup.js"></script>\n<script src="account.js"></script>')
+            (site / "items-test-frame.html").write_text(page, encoding="utf-8")
+            Api.deletes = 0
+            r = results_of(browser, base + narrow_page(site, 360), profile) or {}
+            rows = r.get("rows") or []
+            check(r.get("width") == 360 and len(rows) == 3, "360 px: the page sees a phone's width and lists the 3 items")
+            check(rows and r.get("scroll", 1e9) <= r.get("client", 0) and not any(x["wide"] for x in rows)
+                  and all(x["li"]["r"] <= 360.5 for x in rows), "360 px: no row is wider than the screen")
+            check(rows and all(inside(x["button"], x["li"]) and apart(x["button"], x["body"]) for x in rows),
+                  "360 px: each Delete is inside its row, clear of the text")
+            check(rows and all(x["body"]["w"] >= 150 and x["lines"] <= 2 for x in rows),
+                  "360 px: the text keeps its width (the state and likes in one or two lines, not a word per line)")
+            r = results_of(browser, base + narrow_page(site, 900), profile) or {}
+            rows = r.get("rows") or []
+            check(len(rows) == 3 and all(x["button"]["t"] < x["body"]["b"] and x["button"]["l"] >= x["body"]["r"]
+                                         and inside(x["button"], x["li"]) for x in rows),
+                  "900 px: Delete stays beside the text, as on a computer")
         finally:
             httpd.shutdown()
     finally:
