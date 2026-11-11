@@ -16,5 +16,10 @@ if [ -n "${GALLERY_FEED_URL:-}" ]; then
     python3 "$ROOT/tools/build_gallery.py" "$OUT"
     python3 "$ROOT/tools/build_designs.py" "$OUT"
 fi
+# With POTM_URL (the accounts service's site) Photo of the Month too; tools/test_build_potm.py has
+# a stand-in for it.
+if [ -n "${POTM_URL:-}" ]; then
+    python3 "$ROOT/tools/build_potm.py" "$OUT"
+fi
 echo "serving $OUT on http://127.0.0.1:${1:-8000}/"
 exec python3 -m http.server "${1:-8000}" --bind 127.0.0.1 --directory "$OUT"
