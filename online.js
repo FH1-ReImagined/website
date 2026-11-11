@@ -5,7 +5,10 @@
 // minute while the tab is visible. The badge's place is kept from the start, so it appears without
 // moving the page, and it stays hidden with no feed (a copy of the site without the route, an
 // error, a timeout), a feed that is not what the server sends, one older than five minutes, or
-// nobody online. Screen readers hear it when the count changes, not on every refresh.
+// nobody online. The feed's age is told by the server's clock (the answer's Date, plus its Age
+// when a cache kept it), so a visitor whose clock is off still sees it; the visitor's own clock
+// counts only for an answer without a Date. Screen readers hear it when the count changes, not on
+// every refresh.
 (function () {
   "use strict";
 
@@ -23,13 +26,24 @@
 
   function isInt(v, max) { return typeof v === "number" && isFinite(v) && Math.floor(v) === v && v >= 0 && v <= max; }
 
-  // The counts of a feed, or null when it is not one the badge can show.
+  // The counts of a feed, or null when it is not one the badge can show. now: the server's time
+  // (serverNow). The server keeps racing within players, but it counts worlds from the sessions
+  // published, apart from the players connected, so nothing keeps worlds within players: it is
+  // held to players here instead of the feed being turned away.
   function parse(doc, now) {
     if (!doc || typeof doc !== "object" || Array.isArray(doc) || doc.version !== 1) return null;
     if (!isInt(doc.generated, 1e11) || !isInt(doc.players, MAX_PLAYERS)) return null;
-    if (!isInt(doc.worlds, doc.players) || !isInt(doc.racing, doc.players)) return null;
+    if (!isInt(doc.worlds, MAX_PLAYERS) || !isInt(doc.racing, doc.players)) return null;
     if (Math.abs(now - doc.generated) > MAX_AGE) return null;
-    return { players: doc.players, worlds: doc.worlds, racing: doc.racing };
+    return { players: doc.players, worlds: Math.min(doc.worlds, doc.players), racing: doc.racing };
+  }
+
+  // The time (unix seconds) by the clock of whoever answered: its Date, plus its Age (how long a
+  // cache has kept the answer); the visitor's clock when there is no Date.
+  function serverNow(r) {
+    var date = Date.parse(r.headers.get("Date") || ""), age = Number(r.headers.get("Age") || 0);
+    if (!isFinite(date)) return Date.now() / 1000;
+    return date / 1000 + (isFinite(age) && age > 0 ? age : 0);
   }
 
   function label(c) {
@@ -59,7 +73,7 @@
         var type = r.headers.get("Content-Type") || "", len = Number(r.headers.get("Content-Length") || 0);
         if (!r.ok || type.indexOf("application/json") !== 0 || len > MAX_BYTES) return null;
         return r.text().then(function (body) {
-          return body.length > MAX_BYTES ? null : parse(JSON.parse(body), Date.now() / 1000);
+          return body.length > MAX_BYTES ? null : parse(JSON.parse(body), serverNow(r));
         });
       })
       .catch(function () { return null; })
@@ -84,5 +98,5 @@
   if (document.hidden) schedule();  // the first look waits until the tab is shown
   else refresh().then(schedule);
 
-  window.FHOnline = { parse: parse, label: label, refresh: refresh };
+  window.FHOnline = { parse: parse, label: label, refresh: refresh, serverNow: serverNow };
 })();

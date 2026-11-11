@@ -651,12 +651,14 @@ footer p { max-width: 920px; margin: 0 0 10px; }
 .hero .btn { padding: 15px 24px; font-size: 18px; }
 .hero .btn.ghost { background: rgba(40, 29, 21, .86); border-color: rgba(241, 227, 206, .4); }
 .hero .btn.ghost:hover { background: rgba(51, 38, 29, .8); }
-/* Players online now (online.js): its line is kept from the start, so showing it moves nothing. */
-.hero-live { margin: 16px 0 0; min-height: 0; }
-html.js .hero-live { min-height: 34px; }
+/* Players online now (online.js). Without scripts there is no line at all; with them the line is
+   kept from the start at the pill's own height (--live-h) between 12px gaps, the buttons' own, so
+   showing the pill moves nothing and a hidden one leaves only a little more room above the note. */
+.hero-live { --live-h: 30px; display: none; margin: 0; }
+html.js .hero-live { display: flex; align-items: flex-start; height: var(--live-h); margin-top: 12px; }
 html.js .hero-live + .hero-note { margin-top: 12px; }
 .hero-live-pill {
-  display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px 7px 12px; border-radius: 999px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 9px; box-sizing: border-box; height: var(--live-h); padding: 0 14px 0 12px; border-radius: 999px; white-space: nowrap;
   background: rgba(28, 20, 14, .55); border: 1px solid rgba(241, 227, 206, .22); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   font: 600 15px/1.2 var(--font-ui); letter-spacing: .03em; color: var(--cream); text-decoration: none;
   transition: opacity .4s var(--ease), border-color .18s;
@@ -1068,8 +1070,8 @@ button.like:disabled { opacity: .6; cursor: progress; }
   .hero .btn { font-size: 21px; padding: 18px 30px; }
   .hero .btn small { font-size: 14px; }
   .hero-tag { font-size: 16px; }
+  .hero-live { --live-h: 34px; }
   .hero-live-pill { font-size: 17px; }
-  html.js .hero-live { min-height: 38px; }
   .hero-note { font-size: 17px; }
   .scroll-hint { font-size: 15px; }
 }
