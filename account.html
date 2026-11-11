@@ -43,7 +43,6 @@
       <div class="menu-panel" id="nav-community">
         <div class="menu-list">
           <a href="gallery.html">Photos</a>
-          <a href="photo-of-the-month.html">Photo of the Month</a>
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
@@ -81,6 +80,15 @@
   <section class="panel" id="signin" aria-labelledby="signin-h" hidden>
     <h2 id="signin-h">Sign in</h2>
     <p>Sign in with Discord, GitHub or an email address. Signing in the first time makes your account; there is no separate sign-up.</p>
+    <div class="howto-link" id="howto">
+      <h3>How it works</h3>
+      <ol class="steps">
+        <li>Sign in here with Discord, GitHub or email.</li>
+        <li>In the launcher, with the main public server picked: Online &gt; Online &gt; Website account &gt; Link (before launcher 0.2.9: Settings &gt; Online &gt; Website account).</li>
+        <li>Click Link here, then confirm in the launcher.</li>
+      </ol>
+      <p class="aside">Your game needs one speed trap or record on the public server first, from any time (single player is fine; <a href="faq.html#q10">the steps</a>). Photos come from the game's photo mode and designs from the in-game storefront: the website shows them, with their likes, but they are not uploaded here.</p>
+    </div>
     <div class="cta signin-buttons">
       <form method="post" action="/api/auth/browser/v1/auth/provider/redirect" data-provider="discord" hidden>
         <input type="hidden" name="provider" value="discord">
@@ -143,7 +151,8 @@
 
     <form class="email-form" id="link-code-form">
       <label for="link-code">Have a link code from the launcher? Enter it here</label>
-      <p class="aside">In the launcher: Settings &gt; Online &gt; Website account &gt; Link to website account. It shows an 8-character code, such as K7M2-QXPA, that works for 10 minutes.</p>
+      <p class="aside">In the launcher, with the main public server picked: Online &gt; Online &gt; Website account &gt; Link to website account (before launcher 0.2.9: Settings &gt; Online &gt; Website account). It shows an 8-character code, such as K7M2-QXPA, that works for 10 minutes.</p>
+      <p class="aside" id="link-needs">Before linking, your game needs one speed trap or record on the public server: drive through any speed trap with the public server selected (the launcher's default). Single player is fine; no lobby or online play is needed. Already have a speed trap or another record on the <a href="leaderboards.html">leaderboards</a>, from any time (before this update too)? You can link now. <a href="faq.html#q10">The steps</a>.</p>
       <div class="field-row">
         <input id="link-code" name="link-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="[2-9A-HJ-NP-Za-hj-np-z -]{8,10}" maxlength="10" required>
         <button type="submit" class="btn ghost">Find my game</button>
@@ -184,7 +193,6 @@
       <p class="foot-h">Community</p>
       <ul>
         <li><a href="gallery.html">Photos</a></li>
-        <li><a href="photo-of-the-month.html">Photo of the Month</a></li>
         <li><a href="designs.html">Designs</a></li>
         <li><a href="leaderboards.html">Leaderboards</a></li>
         <li><a href="mods.html">Mods and Textures</a></li>

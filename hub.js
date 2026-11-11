@@ -8,6 +8,8 @@
 // upload form and "Your uploads" (/api/hub/mine). An upload is two calls: POST /api/hub/items
 // makes a draft, then the zip is sent as the body of PUT /api/hub/items/<id>/file; both carry the
 // CSRF token. The accounts service checks the account is linked to its game.
+// When /api/hub/mine refuses (not linked, the link on hold, no speed trap uploaded yet, banned),
+// the share note says why, in the service's words when it gives them.
 // Titles, descriptions and gamertags are the uploaders' own text: they go in with textContent.
 (function () {
   "use strict";
@@ -23,7 +25,9 @@
     refused: "Refused", review: "Checked: waiting for a maintainer", live: "Listed", hidden: "Hidden"
   };
   var ERRORS = {
-    "link your game first": "Link your account to your game first: in the launcher, Settings > Online > Website account.",
+    "link your game first": "Link your account to your game first: your game needs one speed trap or record on the public server, from any time (single player is fine), then in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online).",
+    "this link needs the operator": "Your game link is on hold: your game's key changed. See your account page, or ask on Discord.",
+    "play online first": "Upload one speed trap first: in the game, with the public server picked, drive through any speed trap, then try again.",
     "only your own work": "Only your own work can be shared.",
     "wait until your other uploads are checked": "Wait until your other uploads are checked.",
     "the queue is full: try again later": "Too many uploads are waiting. Try again later.",
@@ -80,6 +84,7 @@
   function errorText(r) {
     var e = r.doc && typeof r.doc.error === "string" ? r.doc.error : "";
     if (r.status === 401) return "You are signed out. Sign in on your account page.";
+    if (r.doc && typeof r.doc.message === "string" && r.doc.message.trim()) return r.doc.message.trim().slice(0, 300);
     if (r.status === 413) return "The zip is too big.";
     return ERRORS[e] || (e ? "Not done: " + e + "." : "That did not work. Try again later.");
   }
@@ -154,7 +159,18 @@
         if (r.status === 401) try { localStorage.removeItem(HINT); } catch (e) { /* storage off */ }
         if (form) form.hidden = true;
         if (note) note.hidden = false;
-        if (r.status === 403 && note) say(note, ERRORS["link your game first"]);
+        if (note && (r.status === 403 || r.status === 409 || r.status === 503)) {
+          // Why this account cannot share: the service's own words, else ours for its error.
+          var e = r.doc && typeof r.doc.error === "string" ? r.doc.error : "";
+          say(note, r.status === 503 ? "Sharing is not available right now. Try again later." :
+                    r.status === 403 && e === "not available" ? "Your game cannot share on the hub: it is banned from the public server's shared features." :
+                    errorText(r));
+          if (e === "link your game first" || e === "play online first") {
+            var how = el("a", "How to link");
+            how.href = "faq.html#q10";
+            note.append(document.createTextNode(" "), how);
+          }
+        }
         return;
       }
       if (form) { form.hidden = false; form.dataset.max = String(num(r.doc.max_bytes)); }

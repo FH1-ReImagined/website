@@ -31,16 +31,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://forza.dyotson.dev/photo-of-the-month.html</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://forza.dyotson.dev/photo-of-the-month-rules.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
     <loc>https://forza.dyotson.dev/designs.html</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
