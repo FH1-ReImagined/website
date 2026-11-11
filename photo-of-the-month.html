@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js");try{if(localStorage.getItem("fh-signed-in")==="1")document.documentElement.classList.add("signed-in")}catch(e){}</script>
+<title>Photo of the Month - Forza Horizon 1: ReImagined</title>
+<meta name="description" content="Photo of the Month: every month, the community photo from Forza Horizon 1: ReImagined with the most votes wins. Live standings, past winners and how to vote. Free to enter and to vote.">
+<link rel="canonical" href="https://forza.dyotson.dev/photo-of-the-month.html">
+<meta name="theme-color" content="#1c140f">
+<meta property="og:title" content="Photo of the Month - Forza Horizon 1: ReImagined">
+<meta property="og:description" content="Every month, the community photo with the most votes wins. Live standings and past winners.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://forza.dyotson.dev/photo-of-the-month.html">
+<meta property="og:image" content="https://forza.dyotson.dev/images/social-preview.png">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="icon" href="images/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#potm-now">Skip to the content</a>
+
+<div class="scene" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="stars" style="--stars:.7"></div>
+  <svg class="ridge far" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,190 140,110 230,160 380,40 520,170 640,100 790,190 940,70 1090,180 1230,90 1380,170 1500,120 1600,170 1600,300"/></svg>
+  <svg class="ridge near" viewBox="0 0 1600 300" preserveAspectRatio="none"><polygon points="0,300 0,220 120,170 260,230 420,120 560,215 700,160 880,240 1030,150 1180,230 1340,140 1480,210 1600,180 1600,300"/></svg>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="images/logo-mark.webp" alt="" width="58" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+  <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav"><span class="nav-bars" aria-hidden="true"></span>Menu</button>
+  <nav id="site-nav" aria-label="Site">
+    <a href="features.html">Features</a>
+    <details class="menu" open>
+      <summary>Online</summary>
+      <div class="menu-panel" id="nav-online">
+        <div class="menu-list">
+          <a href="leaderboards.html">Leaderboards</a>
+          <a href="mods.html">Mods and Textures</a>
+        </div>
+      </div>
+    </details>
+    <details class="menu" open>
+      <summary>Community</summary>
+      <div class="menu-panel" id="nav-community">
+        <div class="menu-list">
+          <a href="gallery.html">Photos</a>
+          <a href="photo-of-the-month.html" aria-current="page">Photo of the Month</a>
+          <a href="designs.html">Designs</a>
+          <a href="press.html">Press</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+      </div>
+    </details>
+    <a class="nav-discord" href="https://discord.gg/yu7zScdcWw">Discord</a>
+    <a class="nav-account" href="account.html">Sign in</a>
+    <a class="nav-cta" href="download.html">Download</a>
+  </nav>
+</header>
+
+<main class="board-page potm-page" id="potm-board">
+  <div class="page-head">
+    <p class="kicker">Community &middot; Monthly event</p>
+    <h1><span class="h1-big">Photo of the Month</span></h1>
+    <p class="aside">Every month, the shared photo with the most votes wins and is featured on the home page. A vote is a like from a website account linked to the game. <a href="photo-of-the-month-rules.html">The rules</a>. Entering and voting are free.</p>
+    <div class="potm-page-share" data-potm-share-page></div>
+  </div>
+
+  <section class="potm-month" id="potm-now" aria-labelledby="potm-now-head">
+    <h2 id="potm-now-head" data-potm-head>This month</h2>
+    <p class="photo-state" data-potm-note>Loading the standings...</p>
+    <ol class="potm-list" data-potm-list aria-label="This month's standings"></ol>
+    <noscript><p class="photo-state error">The standings need JavaScript.</p></noscript>
+  </section>
+
+  <section class="panel rules potm-how" aria-labelledby="potm-how">
+    <h2 id="potm-how">How to enter and vote</h2>
+    <ul>
+      <li><b>Enter:</b> share a photo from photo mode in the game during the month. Every approved photo uploaded that month is in, with no sign-up.</li>
+      <li><b>Vote:</b> sign in on <a href="account.html">your account page</a>, link it to your game (in the launcher, Settings &gt; Online &gt; Website account), then press the thumbs-up on the photos you like. You can like as many photos as you want, once each.</li>
+      <li><b>Which likes are votes:</b> likes given during the month, from accounts that were at least <span data-potm-days>14</span> days old when they liked and whose game's likes count in public. Other likes still show on the photo, but they are not votes. Nobody can vote for their own photo.</li>
+      <li><b>Ties</b> go to the photo that reached its number of votes first. The maintainers check the votes before naming the winner. <a href="photo-of-the-month-rules.html">All the rules</a>.</li>
+    </ul>
+  </section>
+
+  <section class="potm-month" id="potm-before" data-potm-optional hidden aria-labelledby="potm-before-head">
+    <h2 id="potm-before-head" data-potm-head>Last month</h2>
+    <p class="photo-state" data-potm-note></p>
+    <ol class="potm-list" data-potm-list aria-label="Last month's result"></ol>
+  </section>
+
+  <section class="potm-month" id="potm-winners" aria-labelledby="potm-winners-head">
+    <h2 id="potm-winners-head">Past winners</h2>
+    <p class="photo-state" data-potm-winners-state hidden></p>
+    <ul class="potm-winners" data-potm-winners aria-label="Past winners"></ul>
+  </section>
+</main>
+
+<footer>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <a class="brand" href="index.html"><img src="images/logo-mark.webp" alt="" width="58" height="36"><span>Forza Horizon 1<b>ReImagined</b></span></a>
+      <p>The original 2012 Forza Horizon, recompiled for Windows and Linux, and online again. Built with <a href="https://github.com/FH1-ReImagined/ReIGlue">ReIGlue</a> (our <a href="https://github.com/rexglue/rexglue-sdk">ReXGlue</a> fork).</p>
+      <a class="btn ghost ico ico-chat" href="https://discord.gg/yu7zScdcWw"><span>Join the Discord</span></a>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Play</p>
+      <ul>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="online.html">Play online</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Community</p>
+      <ul>
+        <li><a href="gallery.html">Photos</a></li>
+        <li><a href="photo-of-the-month.html">Photo of the Month</a></li>
+        <li><a href="designs.html">Designs</a></li>
+        <li><a href="leaderboards.html">Leaderboards</a></li>
+        <li><a href="mods.html">Mods and Textures</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <p class="foot-h">Project</p>
+      <ul>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined">Source code</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/website">Website source</a></li>
+        <li><a href="press.html">Press kit</a></li>
+        <li><a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/PRIVACY.md">Privacy policy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-legal">
+    <p>The photos were taken and shared by players. Forza Horizon is &copy; Microsoft. This project is not affiliated with, endorsed by or sponsored by Microsoft, Playground Games or Turn 10 Studios, and neither is this event. The game and its launcher are under the <a href="https://github.com/FH1-ReImagined/ForzaHorizon1-ReImagined/blob/main/LICENSE">GPL-3.0-or-later</a>; the <a href="https://github.com/FH1-ReImagined/website">source of this website</a> is under the <a href="LICENSE">AGPL-3.0-or-later</a>; see the <a href="NOTICE.md">copyright and earlier MIT notice</a>.</p>
+    <p>Official links: the only official sources are the <a href="https://github.com/FH1-ReImagined">FH1-ReImagined GitHub organization</a>, this website and the <a href="https://discord.gg/yu7zScdcWw">Discord</a>. ReImagined never ships prebuilt game files or zip downloads of the game.</p>
+  </div>
+</footer>
+
+<dialog id="lightbox"><form method="dialog"><button class="close" aria-label="Close">&times;</button></form><img alt=""><p></p></dialog>
+<script src="nav.js"></script>
+<script src="likes.js"></script>
+<script src="photos.js"></script>
+<script src="potm.js"></script>
+</body>
+</html>
