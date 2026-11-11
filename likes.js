@@ -8,8 +8,11 @@
 // - linked to their game: pressed for what the game key liked, none on their own items; a click
 //   sends POST /api/likes with the CSRF token. The total moves only when the key's likes count
 //   in public (a key counts once its game has uploaded a speed trap to the public server);
-// - not linked yet, or signed out since: the thumbs-up leads to the account page, as for
-//   everybody else.
+// - not linked yet, the link on hold, or the game not allowed to like: the thumbs-up shows the
+//   reason the service gave for /api/likes/mine when it is pressed (link the game in the
+//   launcher, the link is on hold, upload a speed trap first, ...);
+// - signed out since, or the service not answering: the thumbs-up leads to the account page, as
+//   for everybody else.
 // The totals and ids are numbers and ids from the site's own files or the API: nothing here is
 // player text.
 (function () {
@@ -19,9 +22,9 @@
   var KINDS = { photo: "photo", design: "design", mod: "mod", pack: "pack" };
   var NOUN = { photo: "photo", design: "design", mod: "mod", pack: "texture pack" };
   var ERRORS = {
-    "link your game first": "Link your game to like: in the launcher, Settings > Online > Website account.",
+    "link your game first": "Link your game to like: in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online). Your game needs one speed trap uploaded to the public server first.",
     "not available": "Likes are not available for your game.",
-    "this link needs the operator": "Your game link is on hold. See your account page.",
+    "this link needs the operator": "Your game link is on hold: your game's key changed. See your account page, or ask on Discord.",
     "play online first": "Drive through a speed trap in the game with the public server selected (single player is fine), then try again.",
     "your own": "That one is yours.",
     "not found": "That one is no longer shared.",
@@ -76,7 +79,8 @@
   }
   function count(v) { return typeof v === "number" && isFinite(v) && v >= 0 && v < 1e9 ? Math.round(v) : null; }
 
-  // What this visitor may do with likes of a kind: {mode: "anon"|"linked", liked, own, counted, counts}.
+  // What this visitor may do with likes of a kind: {mode: "anon"|"linked"|"blocked", liked, own,
+  // counted, counts, why}. "blocked": signed in, but the service said why this account cannot like.
   function state(kind) {
     if (states[kind]) return states[kind];
     if (!signedIn()) return (states[kind] = Promise.resolve({ mode: "anon" }));
@@ -86,6 +90,10 @@
         var counts = totals.status === 200 && totals.doc && totals.doc.counts && typeof totals.doc.counts === "object"
           ? totals.doc.counts : null;
         if (mine.status === 401) forget();
+        if ((mine.status === 403 || mine.status === 409) && mine.doc) {
+          var why = serverText(mine.doc);
+          if (why) return { mode: "blocked", why: why, counts: counts };
+        }
         if (mine.status !== 200 || !mine.doc) return { mode: "anon", counts: counts };
         return { mode: "linked", liked: ids(mine.doc.liked), own: ids(mine.doc.own), counted: !!mine.doc.counted,
                  counts: counts };
@@ -93,7 +101,7 @@
     return states[kind];
   }
 
-  function say(text) {
+  function say(text, seconds) {
     if (!note) {
       note = document.createElement("p");
       note.className = "like-note";
@@ -104,7 +112,7 @@
     note.textContent = text;
     note.hidden = !text;
     clearTimeout(noteTimer);
-    if (text) noteTimer = setTimeout(function () { note.hidden = true; }, 5000);
+    if (text) noteTimer = setTimeout(function () { note.hidden = true; }, (seconds || 5) * 1000);
   }
 
   function thumb() {
@@ -158,6 +166,17 @@
       b.append(thumb(), document.createTextNode(n === null ? "" : n.toLocaleString("en")));
       b.addEventListener("click", function () { toggle(b, s, st); });
       s.append(b);
+      return;
+    }
+    if (st.mode === "blocked") {
+      var why = document.createElement("button");
+      why.type = "button";
+      why.className = "like";
+      why.title = st.why;
+      why.setAttribute("aria-label", label(n, kind) + ". " + st.why);
+      why.append(thumb(), document.createTextNode(n === null ? "" : n.toLocaleString("en")));
+      why.addEventListener("click", function () { say(st.why, 12); });
+      s.append(why);
       return;
     }
     if (n === null) return;  // no totals in this copy of the site

@@ -12,7 +12,9 @@ sitemap entries. check_site.py passes, and refuses pages that do not match the l
 The pages, in a headless Chrome or Chromium: the list with the uploaders' text as text, the
 download links and SHA-256s, the filter, no call to /api/ for a visitor who did not sign in; for
 one who did, the upload (POST /api/hub/items, then the zip as the body of a PUT with the CSRF
-header), "Your uploads" with their states and reasons, and a report from an item's page.
+header), "Your uploads" with their states and reasons, and a report from an item's page; when
+/api/hub/mine refuses as the service does (403 not linked, 409 on hold, 409 no speed trap with
+its message), no upload form and the share note says why.
 
   python3 tools/test_build_hub.py   # needs Pillow (tools/requirements.txt), for build_gallery's import
 """
@@ -60,7 +62,13 @@ def check(cond, what):
         failures.append(what)
 
 
+# What forza-live accounts/members/likes.py sends for a key the game server forgot.
+KEY_FORGOTTEN = ("The Public server no longer knows your game's key: play on it again (drive through any speed trap "
+                 "camera), then try again.")
+
+
 class Api:
+    mine_refusal = None  # (status, doc) GET /api/hub/mine answers instead, when set
     status = 200
     downloads = "https://downloads.example"
     items = ITEMS
@@ -89,6 +97,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.reply(Api.status, {"error": "not available"})
             return self.reply(200, {"version": 1, "generated": 1, "downloads": Api.downloads, "items": Api.items})
         if self.path == "/api/hub/mine":
+            if Api.mine_refusal:
+                return self.reply(*Api.mine_refusal)
             return self.reply(200, {"items": Api.mine, "max_bytes": 1 << 20})
         if self.path.startswith("/api/likes/"):
             return self.reply(401, {"detail": "Unauthorized"})
@@ -181,6 +191,16 @@ setTimeout(function () {
   }, 1500);
 }, 800);
 """
+MINE_TEST = r"""
+setTimeout(function () {
+  var note = document.querySelector("[data-hub-share-note]");
+  var how = note.querySelector("a[href='faq.html#q10']");
+  var out = { formShown: !document.getElementById("hub-form").hidden, note: note.hidden ? null : note.textContent,
+              how: !!how };
+  var pre = document.createElement("pre"); pre.id = "test-results"; pre.textContent = JSON.stringify(out);
+  document.body.append(pre);
+}, 1500);
+"""
 REPORT_TEST = r"""
 setTimeout(function () {
   var b = Array.prototype.filter.call(document.querySelectorAll("[data-hub-actions] button"), function (x) { return x.textContent === "Report"; })[0];
@@ -256,6 +276,20 @@ def check_pages(browser, site, profiles):
         mine = r.get("mine") or []
         check(len(mine) == 2 and "<i>Mine</i>" in mine[0] and "Waiting for the checks" in mine[0]
               and ".exe files are not allowed" in mine[1], "Your uploads: states and reasons, as text")
+
+        (site / "mine-test.js").write_text(MINE_TEST)
+        (site / "mine-test.html").write_text(text.replace('<script src="hub-test.js"></script>', '<script src="mine-test.js"></script>'))
+        for refusal, says, how, what in (
+                ((403, {"error": "link your game first"}), "Online > Online > Website account", True, "403 link your game first"),
+                ((409, {"error": "this link needs the operator"}), "on hold", False, "409 this link needs the operator"),
+                ((409, {"error": "play online first", "message": KEY_FORGOTTEN}), KEY_FORGOTTEN, True,
+                 "409 play online first, with its message"),
+                ((403, {"error": "not available"}), "banned", False, "403 not available (a banned game)")):
+            Api.mine_refusal = refusal
+            r = results(dump(browser, base + "/mine-test.html", profiles))
+            check(r.get("formShown") is False and says in (r.get("note") or "") and r.get("how") is how,
+                  "Your uploads refused (" + what + "): no form, and the note says why")
+        Api.mine_refusal = None
 
         (site / "mods" / "report-test.js").write_text(REPORT_TEST)
         text = (site / "mods" / "MODAAAAAAAAA.html").read_text()

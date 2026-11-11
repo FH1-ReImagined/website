@@ -922,6 +922,10 @@ button.like:disabled { opacity: .6; cursor: progress; }
 .account-events time { color: var(--muted); margin-right: 6px; }
 .account-page h3 { color: var(--cream); margin: 24px 0 10px; }
 .account-page button.btn.danger { border: 1px solid var(--pink); color: #faede8; background: rgba(223, 145, 116, .12); }
+.howto-link { margin: 0 0 22px; }
+.howto-link h3 { margin-top: 18px; }
+.howto-link .steps { margin: 0 0 12px; }
+.howto-link .steps li { color: var(--soft); font-size: 16px; line-height: 1.45; padding-top: 4px; min-height: 32px; }
 @media (max-width: 700px) {
   .account-facts { grid-template-columns: 1fr; gap: 2px; }
   .account-facts dd { margin-bottom: 8px; }

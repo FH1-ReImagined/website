@@ -7,8 +7,11 @@
 // The localStorage key fh-signed-in is the navbar's hint (nav.js): it says "Account" instead of
 // "Sign in" and hides Download, without other pages ever calling the API.
 // Linking the game: the launcher opens account.html#link=<token>. The page moves the token into
-// sessionStorage (fh-link) and out of the address at once, so it survives a Discord or GitHub
-// sign-in in this tab but is never in the history or a log. Signed in, it asks the service whose
+// localStorage (fh-link, with the time it is over: 10 minutes, as the service's request) and out
+// of the address at once, so it survives a Discord or GitHub sign-in in this tab and an email
+// sign-in whose mail link opens another tab, but is never in the history or a log. It is
+// removed once the link is done, declined, refused or over, and ignored after its 10 minutes.
+// Signed in, it asks the service whose
 // game it is (/api/link/peek), and Link claims it for this account (/api/link/claim); the player
 // then confirms the account id in the launcher, and the page follows the request until it is
 // linked or declined. A code typed in the form (from the launcher, on another device) works the
@@ -23,6 +26,8 @@
   var AUTH = "/api/auth/browser/v1/";
   var HINT = "fh-signed-in";
   var LINK = "fh-link";
+  var LINK_MINUTES = 10;  // as long as the service keeps a link request (LINK_MINUTES there)
+  var TOKEN = /^[A-Za-z0-9_-]{43}$/;
   var stateEl = document.getElementById("account-state");
   var messageEl = document.getElementById("account-message");
   var signin = document.getElementById("signin");
@@ -36,6 +41,7 @@
 
   var ERRORS = {
     busy: "Too many sign-ins from your network. Try again in an hour.",
+    signup_closed: "Too many new accounts from your network today. Try again tomorrow or use another network.",
     cancelled: "Sign-in was cancelled.",
     denied: "Sign-in was cancelled.",
     unavailable: "That sign-in method is not available right now."
@@ -63,12 +69,28 @@
     banned: "This game is banned from the public server's shared features, so the link does nothing for now."
   };
 
+  // The launcher's link token, kept for 10 minutes in this browser (every tab of the site), or
+  // removed (null). Read with no argument: the token, or null once it is over or malformed. With
+  // storage off it is kept in this page only.
+  var kept = null;
   function stored(value) {
+    var now = Date.now();
+    try { sessionStorage.removeItem(LINK); } catch (e) { /* where older pages kept it */ }
+    if (value !== undefined) kept = value ? { token: value, until: now + LINK_MINUTES * 60000 } : null;
     try {
-      if (value === undefined) return sessionStorage.getItem(LINK);
-      if (value) sessionStorage.setItem(LINK, value);
-      else sessionStorage.removeItem(LINK);
-    } catch (e) { /* storage off: the link works only until the page is left */ }
+      if (value === undefined) {
+        var entry = null;
+        try { entry = JSON.parse(localStorage.getItem(LINK) || "null"); } catch (e) { entry = null; }
+        kept = entry;
+      } else if (kept) {
+        localStorage.setItem(LINK, JSON.stringify(kept));
+      } else {
+        localStorage.removeItem(LINK);
+      }
+    } catch (e) { /* storage off: the token lives in this page only */ }
+    if (kept && typeof kept.token === "string" && TOKEN.test(kept.token) && typeof kept.until === "number" &&
+        kept.until > now && kept.until <= now + LINK_MINUTES * 60000) return kept.token;
+    if (kept) stored(null);  // over, or not ours: gone
     return null;
   }
 
@@ -181,7 +203,7 @@
         .toLocaleDateString(undefined, { dateStyle: "medium", timeZone: "UTC" }) + ")";
       note.textContent = GAME_STATES[link.state] || "";
     } else {
-      game.textContent = "Not linked. Upload one speed trap to the public server from the game (single player is fine), then link it from the launcher: Settings > Online > Website account. Until then this account can only browse.";
+      game.textContent = "Not linked. Upload one speed trap to the public server from the game (single player is fine), then link it from the launcher, with the main public server picked: Online > Online > Website account (before launcher 0.2.9: Settings > Online > Website account). Until then this account can only browse.";
       note.textContent = "";
     }
     note.hidden = !note.textContent;
@@ -385,7 +407,7 @@
     var params = new URLSearchParams(location.search);
     var error = params.get("error");
     var code = (location.hash.match(/^#code=([0-9]{8})$/) || [])[1];
-    var token = (location.hash.match(/^#link=([A-Za-z0-9_-]{43})$/) || [])[1];
+    var token = (location.hash.match(/^#link=([A-Za-z0-9_-]{43})$/) || [])[1];  // TOKEN
     if (token) stored(token);
     if (error || location.hash) history.replaceState(null, "", location.pathname);
     if (error) say(ERRORS[error] || "Signing in did not work. Try again.", true);
