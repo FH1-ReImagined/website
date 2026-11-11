@@ -651,6 +651,23 @@ footer p { max-width: 920px; margin: 0 0 10px; }
 .hero .btn { padding: 15px 24px; font-size: 18px; }
 .hero .btn.ghost { background: rgba(40, 29, 21, .86); border-color: rgba(241, 227, 206, .4); }
 .hero .btn.ghost:hover { background: rgba(51, 38, 29, .8); }
+/* Players online now (online.js). Without scripts there is no line at all; with them the line is
+   kept from the start at the pill's own height (--live-h) between 12px gaps, the buttons' own, so
+   showing the pill moves nothing and a hidden one leaves only a little more room above the note. */
+.hero-live { --live-h: 30px; display: none; margin: 0; }
+html.js .hero-live { display: flex; align-items: flex-start; height: var(--live-h); margin-top: 12px; }
+html.js .hero-live + .hero-note { margin-top: 12px; }
+.hero-live-pill {
+  display: inline-flex; align-items: center; gap: 9px; box-sizing: border-box; height: var(--live-h); padding: 0 14px 0 12px; border-radius: 999px; white-space: nowrap;
+  background: rgba(28, 20, 14, .55); border: 1px solid rgba(241, 227, 206, .22); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  font: 600 15px/1.2 var(--font-ui); letter-spacing: .03em; color: var(--cream); text-decoration: none;
+  transition: opacity .4s var(--ease), border-color .18s;
+}
+.hero-live-pill:hover { color: #ffffff; border-color: var(--orange); }
+.hero-live-pill[hidden] { display: inline-flex; visibility: hidden; opacity: 0; }
+.live-dot { position: relative; width: 9px; height: 9px; border-radius: 50%; background: #8fd18a; box-shadow: 0 0 8px rgba(143, 209, 138, .7); flex: none; }
+.live-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #8fd18a; opacity: 0; animation: live-ping 2.4s ease-out infinite; }
+@keyframes live-ping { 0% { transform: scale(.5); opacity: .8; } 80%, 100% { transform: scale(1.5); opacity: 0; } }
 .hero-note { display: flex; align-items: flex-start; gap: 10px; margin: 22px 0 0; max-width: 36em; font-size: 15px; color: #faf5ee; text-shadow: 0 1px 10px rgba(28, 20, 14, .8); }
 .hero-note::before { margin-top: 2px; color: var(--cream); }
 .hero-note strong { color: #ffffff; }
@@ -1021,6 +1038,7 @@ button.like:disabled { opacity: .6; cursor: progress; }
   .hero { padding-bottom: 130px; }
   .hero .cta .btn { flex: 1 1 100%; }
   .hero-tag { font-size: 13px; }
+  .hero-live-pill { font-size: 14px; }
   .hero-logo { height: 56px; margin-bottom: 18px; }
   .landing .sun { width: 44vw; margin-left: -22vw; bottom: 25.5%; }
 }
@@ -1052,6 +1070,8 @@ button.like:disabled { opacity: .6; cursor: progress; }
   .hero .btn { font-size: 21px; padding: 18px 30px; }
   .hero .btn small { font-size: 14px; }
   .hero-tag { font-size: 16px; }
+  .hero-live { --live-h: 34px; }
+  .hero-live-pill { font-size: 17px; }
   .hero-note { font-size: 17px; }
   .scroll-hint { font-size: 15px; }
 }
@@ -1107,7 +1127,8 @@ button.like:disabled { opacity: .6; cursor: progress; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .landing .sun { transform: none; }
-  .scroll-hint .mouse::after, .scroll-hint svg { animation: none; }
+  .scroll-hint .mouse::after, .scroll-hint svg, .live-dot::after { animation: none; }
+  .live-dot::after { display: none; }
   .btn:hover, .tile:hover, .shots.photos li:hover, .hub-card:hover { transform: none; }
 }
 @media (forced-colors: active) {

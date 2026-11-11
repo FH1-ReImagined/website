@@ -6,7 +6,8 @@
 # and texture packs hub's build and pages against a stand-in for its /api/hub/ (tools/test_build_hub.py), and
 # Photo of the Month's build and pages against a stand-in for its /api/potm/ (tools/test_build_potm.py), and
 # the photos and designs shown before the next build, with the partial build and its webhook
-# (tools/test_live_community.py).
+# (tools/test_live_community.py), and the landing page's players-online badge against fixture feeds
+# (tools/test_online_count.py).
 name: check
 
 on:
@@ -35,3 +36,4 @@ jobs:
       - run: python tools/test_build_hub.py
       - run: python tools/test_build_potm.py
       - run: python tools/test_live_community.py
+      - run: python tools/test_online_count.py
