@@ -1,4 +1,4 @@
-// Likes on the community photos and designs (photos.js, designs.js, profile.js), and on the hub's
+// Likes on the community photos, videos and designs (photos.js, videos.js, designs.js, profile.js), and on the hub's
 // mods and texture packs (hub.js, kinds "mod" and "pack", totals from data/hub.json). The Pages workflow
 // copies the public totals into data/gallery.json and data/designs.json (tools/build_gallery.py,
 // tools/build_designs.py: "likes"), so a visitor who never signed in sees them without any call
@@ -19,8 +19,8 @@
   "use strict";
 
   var HINT = "fh-signed-in";
-  var KINDS = { photo: "photo", design: "design", mod: "mod", pack: "pack" };
-  var NOUN = { photo: "photo", design: "design", mod: "mod", pack: "texture pack" };
+  var KINDS = { photo: "photo", video: "video", design: "design", mod: "mod", pack: "pack" };
+  var NOUN = { photo: "photo", video: "video", design: "design", mod: "mod", pack: "texture pack" };
   var ERRORS = {
     "link your game first": "Link your game to like: in the launcher, with the main public server picked, Online > Online > Website account (before launcher 0.2.9: Settings > Online). Your game needs one speed trap or record on the public server first, from any time.",
     "not available": "Likes are not available for your game.",

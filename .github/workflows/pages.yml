@@ -12,6 +12,9 @@
 # tools/build_gallery.py re-encodes every photo without metadata; actions/cache keeps the
 # re-encoded copies between runs so the server sends each photo once. A scheduled run that
 # cannot read the feed fails, like the leaderboards copy, and the published site stays as it was.
+# The community videos (data/videos.json, videos/) come from the same server's /community/videos.json
+# (tools/build_videos.py: the MP4s checked box by box against their SHA-256, the posters re-encoded,
+# at most 100 videos and 700 MB, a cache of its own); a server without that feed gives no videos.
 # The paint jobs and vinyl groups players share come from the same server's
 # /community/designs.json (tools/build_designs.py, the same checks and a cache of its own); a
 # server without that feed gives no designs, and online.html hides its designs section.
@@ -113,6 +116,26 @@ jobs:
         with:
           path: .designs-cache
           key: designs-${{ steps.designs.outputs.cache-key }}
+      - name: Restore the community videos cache
+        id: video-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .videos-cache
+          key: videos-run-${{ github.run_id }}
+          restore-keys: videos-
+      - name: Copy the community videos
+        id: videos
+        env:
+          GALLERY_FEED_URL: ${{ vars.GALLERY_FEED_URL }}
+          LIKES_URL: ${{ vars.LIKES_URL }}
+          REQUIRE_FEED: ${{ github.event_name == 'schedule' && '--require-feed' || '' }}
+        run: python tools/build_videos.py _site --cache .videos-cache $REQUIRE_FEED
+      - name: Save the community videos cache
+        if: steps.videos.outputs.cache-key != '' && steps.video-cache.outputs.cache-matched-key != format('videos-{0}', steps.videos.outputs.cache-key)
+        uses: actions/cache/save@v4
+        with:
+          path: .videos-cache
+          key: videos-${{ steps.videos.outputs.cache-key }}
       - name: Copy the mods and texture packs hub
         env:
           HUB_URL: ${{ vars.HUB_URL || vars.LIKES_URL }}

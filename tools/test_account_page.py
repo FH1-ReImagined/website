@@ -80,7 +80,9 @@ P_MINE, P_OTHER, P_HELD, D_MINE = "MINEAAAAAAAA", "OTHERBBBBBBB", "HELDCCCCCCCC"
 ITEMS = {"items": [
     {"kind": "photo", "id": P_MINE, "title": "<i>Mine</i>", "state": "live", "public": True, "likes": 5, "created": 2},
     {"kind": "photo", "id": P_HELD, "title": "", "state": "held", "public": False, "likes": 0, "created": 1},
-    {"kind": "design", "id": D_MINE, "title": "FLAMES", "state": "pending", "public": False, "likes": 0, "created": 0}],
+    {"kind": "design", "id": D_MINE, "title": "FLAMES", "state": "pending", "public": False, "likes": 0, "created": 0},
+    {"kind": "video", "id": "VIDEOEEEEEEE", "title": "Clip", "state": "pending", "public": False, "likes": 0, "created": -1},
+    {"kind": "video", "id": "VIDEOFFFFFFF", "title": "Clip 2", "state": "held", "public": False, "likes": 0, "created": -2}],
     "counted": False}
 
 
@@ -587,12 +589,15 @@ def main():
             Api.mode, Api.posts, Api.deletes = "active", [], 0
             r = results_of(browser, base + "/items-test.html", profile) or {}
             rows = r.get("rows") or []
-            check(r.get("shown") and len(rows) == 3, "a linked account lists its game's 3 photos and designs")
+            check(r.get("shown") and len(rows) == 5, "a linked account lists its game's 5 photos, designs and videos")
             check(rows and rows[0]["text"] == "<i>Mine</i>Photo \u00b7 On the site \u00b7 5 likes"
                   and rows[0]["img"] == f"photos/{P_MINE}-thumb.jpg", "with the title as text, its state, likes and thumbnail")
-            check(len(rows) == 3 and rows[1]["img"] is None and "Held for the maintainer" in rows[1]["text"]
+            check(len(rows) == 5 and rows[1]["img"] is None and "Held for the maintainer" in rows[1]["text"]
                   and "Untitled" in rows[1]["text"] and "Waiting for the automatic check" in rows[2]["text"],
                   "a held photo and a pending design: their state, no thumbnail")
+            check(len(rows) == 5 and "Video \u00b7 Being converted" in rows[3]["text"]
+                  and "Video \u00b7 Waiting to be checked" in rows[4]["text"],
+                  "a video being converted and one waiting for the check: their own words")
             check(r.get("profile") == f"profile.html?p={OWNER}", "a link to the player's public page, from the site's data")
             check("count in the public totals once" in (r.get("note") or "") and "speed trap" in (r.get("note") or ""),
                   "it says the key's likes do not count yet, until a speed trap is uploaded")
@@ -600,7 +605,7 @@ def main():
             check(r.get("reauth") is True, "a delete without a recent sign-in asks for one")
             check(Api.posts[:2] == [("/api/me/items/delete", {"kind": "photo", "id": P_MINE})] * 2,
                   "Delete sends the item (after the confirm)")
-            check("is deleted" in (r.get("message") or "") and len(r.get("after") or []) == 2,
+            check("is deleted" in (r.get("message") or "") and len(r.get("after") or []) == 4,
                   "a delete that worked says so and the list follows")
 
             print("-- My items on a phone")
@@ -611,7 +616,7 @@ def main():
             Api.deletes = 0
             r = results_of(browser, base + narrow_page(site, 360), profile) or {}
             rows = r.get("rows") or []
-            check(r.get("width") == 360 and len(rows) == 3, "360 px: the page sees a phone's width and lists the 3 items")
+            check(r.get("width") == 360 and len(rows) == 5, "360 px: the page sees a phone's width and lists the 5 items")
             check(rows and r.get("scroll", 1e9) <= r.get("client", 0) and not any(x["wide"] for x in rows)
                   and all(x["li"]["r"] <= 360.5 for x in rows), "360 px: no row is wider than the screen")
             check(rows and all(inside(x["button"], x["li"]) and apart(x["button"], x["body"]) for x in rows),
@@ -620,7 +625,7 @@ def main():
                   "360 px: the text keeps its width (the state and likes in one or two lines, not a word per line)")
             r = results_of(browser, base + narrow_page(site, 900), profile) or {}
             rows = r.get("rows") or []
-            check(len(rows) == 3 and all(x["button"]["t"] < x["body"]["b"] and x["button"]["l"] >= x["body"]["r"]
+            check(len(rows) == 5 and all(x["button"]["t"] < x["body"]["b"] and x["button"]["l"] >= x["body"]["r"]
                                          and inside(x["button"], x["li"]) for x in rows),
                   "900 px: Delete stays beside the text, as on a computer")
         finally:

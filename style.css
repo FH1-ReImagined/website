@@ -317,22 +317,26 @@ main > .stop:first-child { padding-top: calc(var(--bar-h) + clamp(40px, 6vw, 80p
 .shots li > button:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
 .shots img { display: block; width: 100%; height: auto; }
 
-/* ---- the photo viewer (photos.js): one photo at a time, sliding to the next ---- */
+/* ---- the photo viewer (photos.js): one photo at a time, sliding to the next; and the video
+   player (videos.js), the same dialog around one video ---- */
 html.viewer-open { overflow: hidden; }
-#lightbox {
+#lightbox, #player {
   position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0;
   border: 0; background: transparent; color: var(--text); overflow: hidden;
 }
-#lightbox::backdrop { background: rgba(15, 10, 6, .94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-#lightbox[open] { display: block; animation: viewer-in .22s var(--ease); }
+#lightbox::backdrop, #player::backdrop { background: rgba(15, 10, 6, .94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+#lightbox[open], #player[open] { display: block; animation: viewer-in .22s var(--ease); }
 @keyframes viewer-in { from { opacity: 0; } to { opacity: 1; } }
-#lightbox form { margin: 0; }
-#lightbox .close {
+#lightbox form, #player form { margin: 0; }
+#lightbox .close, #player .close {
   all: unset; position: absolute; z-index: 3; right: max(12px, env(safe-area-inset-right)); top: 12px; width: 46px; height: 46px; border-radius: 50%;
   display: grid; place-items: center; font-size: 30px; line-height: 1; cursor: pointer; color: var(--cream); background: rgba(241, 227, 206, .08);
 }
-#lightbox .close:hover { background: rgba(228, 150, 87, .2); }
-#lightbox .close:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+#lightbox .close:hover, #player .close:hover { background: rgba(228, 150, 87, .2); }
+#lightbox .close:focus-visible, #player .close:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.player-stage { position: absolute; left: 0; right: 0; top: 70px; bottom: 92px; display: grid; place-items: center; padding: 0 clamp(12px, 6vw, 96px); }
+.player-stage video { display: block; width: 100%; height: 100%; max-height: 100%; object-fit: contain; background: transparent; border-radius: 10px; }
+.player-stage video:focus-visible { outline: 2px solid var(--orange); outline-offset: 4px; }
 .viewer-count { position: absolute; z-index: 2; left: max(18px, env(safe-area-inset-left)); top: 20px; margin: 0; font: 700 15px/1 var(--font-ui); letter-spacing: .12em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .viewer-count b { color: var(--cream); }
 .viewer-stage { position: absolute; left: 0; right: 0; top: 70px; bottom: 92px; overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
@@ -377,7 +381,9 @@ html.viewer-open { overflow: hidden; }
 .viewer-cap span { color: var(--muted); font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .viewer-cap span:empty { display: none; }
 @media (max-width: 700px) {
-  .viewer-stage { top: 64px; bottom: 96px; }
+  .viewer-stage, .player-stage { top: 64px; bottom: 96px; }
+  .player-stage { padding: 0; }
+  .player-stage video { border-radius: 0; }
   .viewer-slide { padding: 0 8px; }
   .viewer-nav { top: auto; bottom: 22px; margin-top: 0; width: 48px; height: 48px; }
   .viewer-cap { padding: 12px 72px calc(12px + env(safe-area-inset-bottom)); }
@@ -763,6 +769,21 @@ a.photo-by:hover { color: var(--orange); text-decoration: underline; }
 .shots.photos.all { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .photo-state, .design-state { color: var(--muted); margin: 10px 2px 0; }
 .photo-state.error, .design-state.error { color: #faede8; }
+
+/* ---- community videos (videos.js): the photos' cards, with a play button and the length ---- */
+.shots.videos li > button { cursor: pointer; }
+.shots.videos li > button::after {
+  opacity: 1; left: 50%; top: 50%; right: auto; width: 58px; height: 58px; margin: -29px 0 0 -29px;
+  background: rgba(28, 20, 14, .72) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f1e3ce'%3E%3Cpath d='M8 5.5v13l10.5-6.5z'/%3E%3C/svg%3E") 55% 50% / 26px no-repeat;
+  box-shadow: 0 0 0 2px rgba(241, 227, 206, .35); transition: background-color .2s, transform .25s var(--ease);
+}
+.shots.videos li > button:hover::after, .shots.videos li > button:focus-visible::after { background-color: rgba(208, 112, 63, .9); transform: scale(1.06); }
+a.video-link { text-decoration: none; }
+a.video-link:hover, a.video-link:focus-visible { color: var(--orange); text-decoration: underline; }
+.video-len {
+  position: absolute; z-index: 1; right: 10px; bottom: 10px; padding: 4px 8px; border-radius: 8px; line-height: 1.2;
+  background: rgba(20, 14, 10, .8); color: #f4ebdd; font: 700 13px/1.2 var(--font-ui); letter-spacing: .04em; font-variant-numeric: tabular-nums;
+}
 .gallery-page { max-width: 1800px; }
 .gallery-page .rules, .designs-page .rules { width: min(100%, 820px); margin-top: 48px; }
 .rules ul { margin: 0; padding-left: 1.2em; }

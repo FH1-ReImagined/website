@@ -43,6 +43,7 @@
       <div class="menu-panel" id="nav-community">
         <div class="menu-list">
           <a href="gallery.html">Photos</a>
+          <a href="videos.html">Videos</a>
           <a href="designs.html">Designs</a>
           <a href="press.html">Press</a>
           <a href="faq.html">FAQ</a>
@@ -87,7 +88,7 @@
         <li>In the launcher, with the main public server picked: Online &gt; Online &gt; Website account &gt; Link (before launcher 0.2.9: Settings &gt; Online &gt; Website account).</li>
         <li>Click Link here, then confirm in the launcher.</li>
       </ol>
-      <p class="aside">Your game needs one speed trap or record on the public server first, from any time (single player is fine; <a href="faq.html#q10">the steps</a>). Photos come from the game's photo mode and designs from the in-game storefront: the website shows them, with their likes, but they are not uploaded here.</p>
+      <p class="aside">Your game needs one speed trap or record on the public server first, from any time (single player is fine; <a href="faq.html#q10">the steps</a>). Photos come from the game's photo mode, videos from the game's movie uploads and designs from the in-game storefront: the website shows them, with their likes, but they are not uploaded here.</p>
     </div>
     <div class="cta signin-buttons">
       <form method="post" action="/api/auth/browser/v1/auth/provider/redirect" data-provider="discord" hidden>
@@ -141,9 +142,9 @@
     <p class="aside" id="unlink-reauth" hidden>For your safety, unlinking here needs a sign-in in the last 10 minutes. Sign out, sign in again, then unlink. Or unlink from the launcher.</p>
 
     <div class="my-items" id="items" hidden>
-      <h3>Your photos and designs</h3>
+      <h3>Your photos, videos and designs</h3>
       <p class="aside" id="items-note" hidden></p>
-      <p class="aside" id="items-empty" hidden>Nothing yet. Photos you upload from photo mode (Big Shot) and designs you share from the storefront show up here.</p>
+      <p class="aside" id="items-empty" hidden>Nothing yet. Photos you upload from photo mode (Big Shot), movies you upload from the game and designs you share from the storefront show up here.</p>
       <ul class="item-list" id="items-list"></ul>
       <p class="aside" id="items-profile" hidden><a id="items-profile-link" href="profile.html">Your public page</a> shows what is on the site, with its likes.</p>
       <p class="aside" id="items-reauth" hidden>For your safety, deleting needs a sign-in in the last 10 minutes. Sign out, sign in again, then delete.</p>
@@ -167,7 +168,7 @@
     <ul class="account-events" id="account-events"></ul>
 
     <h3>Delete your account</h3>
-    <p>Deleting your account removes it and everything the website keeps about it at once, its game link and your game's likes included. Things you shared from the game (photos, designs) belong to your game, not to this account, and stay: delete them above first if you want them gone.</p>
+    <p>Deleting your account removes it and everything the website keeps about it at once, its game link and your game's likes included. Things you shared from the game (photos, videos, designs) belong to your game, not to this account, and stay: delete them above first if you want them gone.</p>
     <p class="aside" id="delete-reauth" hidden>For your safety, deleting needs a sign-in in the last 10 minutes. Sign out, sign in again, then delete.</p>
     <button type="button" class="btn ghost danger" id="delete">Delete my account</button>
   </section>
@@ -193,6 +194,7 @@
       <p class="foot-h">Community</p>
       <ul>
         <li><a href="gallery.html">Photos</a></li>
+        <li><a href="videos.html">Videos</a></li>
         <li><a href="designs.html">Designs</a></li>
         <li><a href="leaderboards.html">Leaderboards</a></li>
         <li><a href="mods.html">Mods and Textures</a></li>

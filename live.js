@@ -1,11 +1,13 @@
-// The newest community photos and designs, before the next build bakes them into the site.
-// gallery.html and designs.html (a list or page marked data-photos-live or data-designs-live)
-// read the game server's public feeds through this site, at /live/community/gallery.json and
-// /live/community/designs.json: the same feeds tools/build_gallery.py and build_designs.py read,
+// The newest community photos, videos and designs, before the next build bakes them into the site.
+// gallery.html, videos.html and designs.html (a list or page marked data-photos-live,
+// data-videos-live or data-designs-live) read the game server's public feeds through this site, at
+// /live/community/gallery.json, videos.json and designs.json: the same feeds
+// tools/build_gallery.py, build_videos.py and build_designs.py read,
 // passed on read-only, and cached for a few seconds, by the site's web server. The feed decides
 // what is shown and in which order: an item the build already holds keeps the build's copy (its
 // re-encoded picture and thumbnail, its likes), an item only the feed lists yet is shown from the
-// feed's own picture route (/live/community/img/<id>, /live/community/design-img/<id>.png), and
+// feed's own routes (/live/community/img/<id>, /live/community/video/<id>.mp4 and .jpg,
+// /live/community/design-img/<id>.png), and
 // an item the feed no longer lists (hidden or deleted on the server) is left out at once.
 // Each entry is checked as the builds check it (the same ids, codes, hashes and text limits;
 // anything else in it is ignored), and player text goes into the pages as text only. With no
@@ -14,7 +16,9 @@
 (function () {
   "use strict";
 
-  var FEEDS = { photo: "/live/community/gallery.json", design: "/live/community/designs.json" };
+  var FEEDS = { photo: "/live/community/gallery.json", video: "/live/community/videos.json",
+                design: "/live/community/designs.json" };
+  var LISTS = { photo: "photos", video: "videos", design: "designs" };
   var MAX_ITEMS = 500;
   var MAX_BYTES = 8 << 20;
   var TIMEOUT = 5000;
@@ -48,6 +52,23 @@
     if (owner(raw)) p.owner = raw.owner;
     ["car", "location"].forEach(function (k) { var t = clean(raw[k], LIMITS[k]); if (t) p[k] = t; });
     return p;
+  }
+
+  function videoOf(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    var id = raw.id;
+    if (typeof id !== "string" || !/^[A-Z2-7]{12}$/.test(id)) return null;
+    if (raw.video !== "/community/video/" + id + ".mp4" || raw.poster !== "/community/video/" + id + ".jpg") return null;
+    if (typeof raw.sha256 !== "string" || !/^[0-9a-fA-F]{64}$/.test(raw.sha256)) return null;
+    if (!isInt(raw.approvedAt, 1e11) || !isInt(raw.w, 1920) || !isInt(raw.h, 1920) || raw.w < 64 || raw.h < 64) return null;
+    if (typeof raw.seconds !== "number" || !(raw.seconds > 0 && raw.seconds <= 600)) return null;
+    var gamertag = clean(raw.gamertag, LIMITS.gamertag);
+    if (!gamertag) return null;
+    var v = { id: id, title: clean(raw.title, LIMITS.title), gamertag: gamertag, src: "/live" + raw.video,
+              poster: "/live" + raw.poster, w: raw.w, h: raw.h, seconds: Math.round(raw.seconds * 10) / 10,
+              date: raw.approvedAt, live: true };
+    if (owner(raw)) v.owner = raw.owner;
+    return v;
   }
 
   function designOf(raw) {
@@ -90,7 +111,7 @@
         if (!r.ok || type.indexOf("application/json") !== 0 || len > MAX_BYTES) return null;
         return r.text().then(function (t) {
           if (t.length > MAX_BYTES) return null;
-          var doc = JSON.parse(t), list = doc && doc.version === 1 ? doc[kind === "photo" ? "photos" : "designs"] : null;
+          var doc = JSON.parse(t), list = doc && doc.version === 1 ? doc[LISTS[kind]] : null;
           return Array.isArray(list) ? list : null;
         });
       })
@@ -106,7 +127,7 @@
       var built = {}, seen = {}, out = [];
       baked.forEach(function (b) { built[b.id] = b; });
       for (var i = 0; i < feed.length && out.length < MAX_ITEMS; i++) {
-        var item = kind === "photo" ? photoOf(feed[i]) : designOf(feed[i]);
+        var item = kind === "photo" ? photoOf(feed[i]) : kind === "video" ? videoOf(feed[i]) : designOf(feed[i]);
         if (!item || seen[item.id]) continue;
         seen[item.id] = true;
         out.push(built[item.id] || item);
@@ -115,5 +136,5 @@
     });
   }
 
-  window.FHLive = { merge: merge, photoOf: photoOf, designOf: designOf, clean: clean };
+  window.FHLive = { merge: merge, photoOf: photoOf, videoOf: videoOf, designOf: designOf, clean: clean };
 })();

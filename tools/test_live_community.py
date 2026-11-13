@@ -265,6 +265,7 @@ def test_partial_build(tmp):
     jpeg(first / "photos" / "OLDOLDOLDOLD.jpg", 640, 360, (1, 2, 3))
     (first / "data" / "gallery.json").write_text('{"version":1,"generated":1,"photos":[]}\n')
     (first / "data" / "designs.json").write_text('{"version":1,"generated":1,"designs":[]}\n')
+    (first / "data" / "videos.json").write_text('{"version":1,"generated":1,"videos":[]}\n')
     # The served release's Photo of the Month names a photo, with its files, that the next gallery
     # no longer has (deleted since the full build).
     old_winner = {"month": "2026-10", "id": "OLDOLDOLDOLD", "title": "Old", "gamertag": "Someone", "votes": 3,
@@ -275,7 +276,7 @@ def test_partial_build(tmp):
     (www / "current").symlink_to(first)
     served_before = (first / "data" / "gallery.json").read_text()
     env = dict(os.environ, SITE_LINK=str(www / "current"), RELEASES=str(www / "releases"), BUILD_LOCK=str(tmp / "lock"),
-               GALLERY_CACHE=str(tmp / "gc"), DESIGNS_CACHE=str(tmp / "dc"))
+               GALLERY_CACHE=str(tmp / "gc"), DESIGNS_CACHE=str(tmp / "dc"), VIDEOS_CACHE=str(tmp / "vc"))
     env.pop("GALLERY_FEED_URL", None)
     env.pop("LIKES_URL", None)
     env.pop("POTM_URL", None)
@@ -289,6 +290,8 @@ def test_partial_build(tmp):
     check(os.path.samefile(now / "index.html", first / "index.html"), "unchanged files are shared with the release before")
     check(json.loads((now / "data" / "gallery.json").read_text())["photos"] == [] and not (now / "photos" / "OLDOLDOLDOLD.jpg").exists(),
           "the photos are built again in the new release")
+    check(json.loads((now / "data" / "videos.json").read_text())["videos"] == [] and (now / "videos").is_dir(),
+          "the videos too")
     potm = json.loads((now / "data" / "photo-of-the-month.json").read_text())
     check(potm["featured"] is None and potm["winners"] == [] and (first / "data" / "photo-of-the-month.json").read_text() == potm_before,
           "Photo of the Month is built again after the photos (no service here: empty), the served one untouched")
