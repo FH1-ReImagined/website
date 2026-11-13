@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# A partial build of a self-hosted copy of the site: the community photos and designs only, for
-# the minute after the game server approves, hides or deletes one (tools/site_hook.py runs it).
+# A partial build of a self-hosted copy of the site: the community photos, videos and designs only,
+# for the minute after the game server approves, hides or deletes one (tools/site_hook.py runs it).
 # The full build (the whole site, every few minutes) stays the source of everything else; this
-# copies the release the site serves now, builds the photos and designs into the copy again
-# (tools/build_gallery.py and build_designs.py, with the same feeds, caches and like totals as
+# copies the release the site serves now, builds the photos, videos and designs into the copy again
+# (tools/build_gallery.py, build_videos.py and build_designs.py, with the same feeds, caches and like totals as
 # the full build), checks it (tools/check_site.py) and switches the site to it at once, the way
 # the full build does: a symlink to the release, replaced in one rename. A feed that cannot be
 # read, a failed check or a site that is not served through such a symlink changes nothing.
@@ -19,8 +19,8 @@
 #   SITE_LINK      the symlink the web server serves                       (/www/current)
 #   RELEASES       the folder of the releases                              (/www/releases)
 #   REPO           the checkout of this repository the full build uses     (the one this file is in)
-#   GALLERY_CACHE, DESIGNS_CACHE   the full build's caches of re-encoded files
-#                                  (/work/gallery-cache, /work/designs-cache)
+#   GALLERY_CACHE, DESIGNS_CACHE, VIDEOS_CACHE   the full build's caches of re-encoded files
+#                                  (/work/gallery-cache, /work/designs-cache, /work/videos-cache)
 #   BUILD_LOCK     a lock file the full build also holds, so one build runs at a time
 #                                                                          (/work/build.lock)
 #   KEEP           partial releases kept besides the one served            (2)
@@ -32,6 +32,7 @@ SITE_LINK="${SITE_LINK:-/www/current}"
 RELEASES="${RELEASES:-/www/releases}"
 GALLERY_CACHE="${GALLERY_CACHE:-/work/gallery-cache}"
 DESIGNS_CACHE="${DESIGNS_CACHE:-/work/designs-cache}"
+VIDEOS_CACHE="${VIDEOS_CACHE:-/work/videos-cache}"
 BUILD_LOCK="${BUILD_LOCK:-/work/build.lock}"
 KEEP="${KEEP:-2}"
 
@@ -59,11 +60,12 @@ trap 'rm -rf "$new" "$SITE_LINK.next"' EXIT
 # builders write is removed from it first, so they write new files and the served release is
 # never touched.
 cp -al "$current" "$new"
-rm -rf "$new/photos" "$new/designs"
-rm -f "$new/data/gallery.json" "$new/data/designs.json" "$new/data/photo-of-the-month.json"
+rm -rf "$new/photos" "$new/designs" "$new/videos"
+rm -f "$new/data/gallery.json" "$new/data/designs.json" "$new/data/videos.json" "$new/data/photo-of-the-month.json"
 
 python3 "$REPO/tools/build_gallery.py" "$new" --cache "$GALLERY_CACHE" --require-feed
 python3 "$REPO/tools/build_designs.py" "$new" --cache "$DESIGNS_CACHE" --require-feed
+python3 "$REPO/tools/build_videos.py" "$new" --cache "$VIDEOS_CACHE" --require-feed
 POTM_URL="${POTM_URL:-${LIKES_URL:-}}" python3 "$REPO/tools/build_potm.py" "$new" --require
 python3 "$REPO/tools/check_site.py" "$new" >/dev/null || { python3 "$REPO/tools/check_site.py" "$new" | head -20; say "the check failed: nothing switched"; exit 1; }
 

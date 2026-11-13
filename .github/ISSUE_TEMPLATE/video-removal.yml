@@ -1,0 +1,31 @@
+name: Remove a community video
+description: Ask for a video of the community videos (forza.dyotson.dev/videos.html) to be taken down.
+title: "Remove a community video"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask here for a video of the [community videos](https://forza.dyotson.dev/videos.html) to be taken down: one of yours, or one that breaks the rules. This issue is public, so leave personal details out. You can also ask on the [Discord](https://discord.gg/yu7zScdcWw).
+  - type: input
+    id: video
+    attributes:
+      label: Which video
+      description: Its title and gamertag, or its address (open it on the videos page and copy the video's address).
+    validations:
+      required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Why
+      options:
+        - It is my video and I want it removed
+        - It is not the sharer's own clip
+        - Offensive text, plate or livery
+        - Personal details in the title
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else

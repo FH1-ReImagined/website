@@ -16,7 +16,7 @@
 // then confirms the account id in the launcher, and the page follows the request until it is
 // linked or declined. A code typed in the form (from the launcher, on another device) works the
 // same way.
-// A linked account sees its game's photos and designs (/api/me/items) in every state, with their
+// A linked account sees its game's photos, videos and designs (/api/me/items) in every state, with their
 // likes, and can delete them (/api/me/items/delete, after a sign-in in the past 10 minutes). The
 // link to the player's public page (profile.html?p=<owner>) comes from the site's own data
 // files: the accounts service never knows that id.
@@ -62,7 +62,8 @@
     held: "Held for the maintainer to check",
     hidden: "Hidden"
   };
-  var ITEM_KINDS = { photo: "Photo", design: "Design" };
+  var ITEM_KINDS = { photo: "Photo", video: "Video", design: "Design" };
+  var ITEM_NOUNS = { photo: "photo", video: "video", design: "design" };
   var GAME_STATES = {
     frozen: "This link is on hold: your game's key changed. The maintainer checks such links; ask on Discord.",
     waiting: "The public server has not seen your game for a long time. Drive through a speed trap with the public server selected (single player is fine) and the link works again.",
@@ -221,6 +222,7 @@
 
   function thumbOf(item) {
     if (!item.public) return "";
+    if (item.kind === "video") return "videos/" + item.id + ".jpg";  // its poster
     return item.kind === "photo" ? "photos/" + item.id + "-thumb.jpg" : "designs/" + item.id + ".png";
   }
 
@@ -238,9 +240,10 @@
           return hit ? hit.owner : null;
         }, function () { return null; });
     }
-    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design")])
+    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design"),
+                 find("data/videos.json", "videos", "video")])
       .then(function (r) {
-        var owner = r[0] || r[1];
+        var owner = r[0] || r[1] || r[2];
         if (!owner) return;
         document.getElementById("items-profile-link").href = "profile.html?p=" + owner;
         p.hidden = false;
@@ -272,7 +275,7 @@
       li.appendChild(body);
       var del = text("button", "Delete", "btn ghost danger");
       del.type = "button";
-      del.setAttribute("aria-label", "Delete the " + (item.kind === "photo" ? "photo " : "design ") + (item.title || item.id));
+      del.setAttribute("aria-label", "Delete the " + (ITEM_NOUNS[item.kind] || "item") + " " + (item.title || item.id));
       del.addEventListener("click", function () { deleteItem(item); });
       li.appendChild(del);
       list.appendChild(li);
@@ -293,7 +296,7 @@
   }
 
   function deleteItem(item) {
-    var what = (item.kind === "photo" ? "photo" : "design") + (item.title ? " “" + item.title + "”" : "");
+    var what = (ITEM_NOUNS[item.kind] || "item") + (item.title ? " “" + item.title + "”" : "");
     if (!window.confirm("Delete your " + what + "? It is removed from the website" +
                         (item.kind === "design" ? " and the game's storefront" : "") + ", with its likes. This cannot be undone.")) return;
     document.getElementById("items-reauth").hidden = true;

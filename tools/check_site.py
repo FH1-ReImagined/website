@@ -10,6 +10,10 @@ show, every listed preview there and no unlisted one, and PNGs of pixels alone (
 tRNS, IDAT and IEND chunks, nothing after the end). When the mods and texture packs hub was
 (tools/build_hub.py), data/hub.json and the item pages mods/<id>.html: only the fields the pages
 show, downloads from the download host by SHA-256, one page per item, no markup from player text.
+When the community videos were (tools/build_videos.py), data/videos.json: only the fields the
+pages show, every listed video and poster there and no unlisted one, MP4s of the boxes the
+server's converter writes (an ISO brand, one moov with an H.264 track, mdat and padding only),
+and posters without metadata.
 When Photo of the Month was (tools/build_potm.py), data/photo-of-the-month.json: only the fields
 the pages show, months and ids that are months and ids, counts that are counts, and every photo
 it names one that data/gallery.json lists, with the same files.
@@ -28,6 +32,10 @@ FULL_WIDTH, THUMB_WIDTH, MAX_SIDE = 1920, 480, 7680
 DESIGN_KEYS = {"id", "type", "code", "title", "gamertag", "owner", "likes", "car", "downloads", "rating",
                "ratings", "createdAt", "src", "w", "h"}
 OWNER_RE = re.compile(r"[0-9a-f]{12}")  # the server's player id (a salted hash), never a XUID
+VIDEO_KEYS = {"id", "title", "gamertag", "owner", "likes", "src", "poster", "w", "h", "seconds", "size", "date"}
+POSTER_WIDTH, MAX_VIDEO_BYTES = 960, 32 << 20
+MP4_TOP = {b"ftyp", b"moov", b"mdat", b"free", b"skip", b"wide"}
+MP4_BRANDS = {b"isom", b"iso2", b"iso4", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1"}
 # Pages that are not in the navbar: no link in it is the current page. online.html (how to play
 # online) is reached from the landing page, the FAQ and the footer, the Photo of the Month rules
 # from that event's page. Photo of the Month itself is hidden until the contest runs (README.md).
@@ -80,6 +88,94 @@ def jpeg_segments(data):
     if not size:
         raise ValueError("no frame")
     return size[0], size[1], markers, b"".join(headers)
+
+
+def mp4_boxes(data):
+    """The top-level boxes of an MP4 as the game server's converter writes it (ftyp first, with an
+    ISO brand; one moov holding an H.264 track; mdat; padding only; filling the file exactly);
+    ValueError for anything else. tools/build_videos.py checks each video with it too."""
+    i, seen = 0, []
+    while i < len(data):
+        if i + 8 > len(data):
+            raise ValueError("the video ends inside a box")
+        size, kind = int.from_bytes(data[i:i + 4], "big"), data[i + 4:i + 8]
+        head = 8
+        if size == 1:
+            if i + 16 > len(data):
+                raise ValueError("the video ends inside a box")
+            size, head = int.from_bytes(data[i + 8:i + 16], "big"), 16
+        elif size == 0:
+            size = len(data) - i
+        if size < head or i + size > len(data):
+            raise ValueError("a box of the video has a bad size")
+        if kind not in MP4_TOP:
+            raise ValueError(f"an unexpected box {kind!r} in the video")
+        if kind == b"ftyp" and (seen or size < 16 or data[i + 8:i + 12] not in MP4_BRANDS):
+            raise ValueError("the video's ftyp box")
+        if kind == b"moov":
+            if b"moov" in seen:
+                raise ValueError("two moov boxes")
+            if b"avc1" not in data[i:i + size]:
+                raise ValueError("the video has no H.264 track")
+        seen.append(kind)
+        i += size
+    if not seen or seen[0] != b"ftyp" or b"moov" not in seen or b"mdat" not in seen:
+        raise ValueError("not an MP4 file")
+    return seen
+
+
+def check_videos(root):
+    path = root / "data" / "videos.json"
+    text = path.read_text(encoding="utf-8")
+    bad = [f"data/videos.json: contains {w!r}" for w in ("xuid",) if w in text.lower()]
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return bad  # reported with the other data files
+    if not (isinstance(doc, dict) and doc.get("version") == 1 and isinstance(doc.get("videos"), list)):
+        return bad + ["data/videos.json: not a version 1 list of videos"]
+    if set(doc) - {"version", "generated", "videos"}:
+        bad.append(f"data/videos.json: unexpected fields {sorted(set(doc) - {'version', 'generated', 'videos'})}")
+    listed = set()
+    for i, v in enumerate(doc["videos"]):
+        where = f"data/videos.json video {i}"
+        if not isinstance(v, dict) or not re.fullmatch(r"[A-Z2-7]{12}", str(v.get("id"))):
+            bad.append(f"{where}: no id")
+            continue
+        vid = v["id"]
+        if set(v) - VIDEO_KEYS:
+            bad.append(f"{where}: unexpected fields {sorted(set(v) - VIDEO_KEYS)}")
+        if not (isinstance(v.get("gamertag"), str) and v["gamertag"] and isinstance(v.get("title"), str)):
+            bad.append(f"{where}: no gamertag or title")
+        bad += check_owner_and_likes(where, v)
+        s = v.get("seconds")
+        if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 < s <= 600 or not is_count(v.get("date"), MAX_TIME):
+            bad.append(f"{where}: bad seconds or date")
+        if v.get("src") != f"videos/{vid}.mp4" or v.get("poster") != f"videos/{vid}.jpg":
+            bad.append(f"{where}: src/poster are not videos/{vid}.mp4 and videos/{vid}.jpg")
+            continue
+        if not (is_size(v.get("w"), POSTER_WIDTH) and is_size(v.get("h"), MAX_SIDE) and is_size(v.get("size"), MAX_VIDEO_BYTES)):
+            bad.append(f"{where}: sizes out of range")
+            continue
+        listed.update((v["src"], v["poster"]))
+        if not (root / v["src"]).is_file():
+            bad.append(f"{where}: missing {v['src']}")
+        else:
+            data = (root / v["src"]).read_bytes()
+            if len(data) != v["size"]:
+                bad.append(f"{where}: {v['src']} is {len(data)} bytes, data/videos.json says {v['size']}")
+            try:
+                mp4_boxes(data)
+            except ValueError as e:
+                bad.append(f"{v['src']}: {e}")
+        if not (root / v["poster"]).is_file():
+            bad.append(f"{where}: missing {v['poster']}")
+        else:
+            bad += check_jpeg(root / v["poster"], v["w"], v["h"], POSTER_WIDTH)
+    if (root / "videos").is_dir():
+        bad += [f"videos/{f.name}: not in data/videos.json"
+                for f in sorted((root / "videos").iterdir()) if f"videos/{f.name}" not in listed]
+    return bad
 
 
 def check_jpeg(path, width, height, max_width):
@@ -418,7 +514,8 @@ def main():
         except ValueError as e:
             bad.append(f"{f.relative_to(root)}: {e}")
     for name in ("index.html", "features.html", "online.html", "download.html", "leaderboards.html",
-                 "gallery.html", "photos.js", "designs.html", "designs.js", "press.html", "nav.js", "account.html", "account.js",
+                 "gallery.html", "photos.js", "videos.html", "videos.js", "designs.html", "designs.js", "press.html", "nav.js",
+                 "account.html", "account.js", "live.js",
                  "likes.js", "online.js", "profile.html", "profile.js", "mods.html", "hub.js",
                  "photo-of-the-month.html", "photo-of-the-month-rules.html", "potm.js",
                  "robots.txt", "sitemap.xml", ".nojekyll",
@@ -451,7 +548,8 @@ def main():
     for loc in ("https://forza.dyotson.dev/", "https://forza.dyotson.dev/features.html",
                 "https://forza.dyotson.dev/online.html", "https://forza.dyotson.dev/download.html",
                 "https://forza.dyotson.dev/leaderboards.html", "https://forza.dyotson.dev/gallery.html",
-                "https://forza.dyotson.dev/designs.html", "https://forza.dyotson.dev/press.html"):
+                "https://forza.dyotson.dev/videos.html", "https://forza.dyotson.dev/designs.html",
+                "https://forza.dyotson.dev/press.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
     # The account page: never indexed, and its sign-in forms post to the accounts service only.
@@ -502,6 +600,8 @@ def main():
         bad += check_gallery(root)
     if (root / "data" / "designs.json").is_file():
         bad += check_designs(root)
+    if (root / "data" / "videos.json").is_file():
+        bad += check_videos(root)
     if (root / "data" / "hub.json").is_file():
         bad += check_hub(root)
     if (root / "data" / "photo-of-the-month.json").is_file():
