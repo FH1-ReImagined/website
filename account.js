@@ -62,6 +62,9 @@
     held: "Held for the maintainer to check",
     hidden: "Hidden"
   };
+  // A video is "pending" while the server converts it and "held" while it waits for the automatic
+  // check (no video waits for the maintainer).
+  var VIDEO_STATES = { live: "On the site", pending: "Being converted", held: "Waiting to be checked", hidden: "Hidden" };
   var ITEM_KINDS = { photo: "Photo", video: "Video", design: "Design" };
   var ITEM_NOUNS = { photo: "photo", video: "video", design: "design" };
   var GAME_STATES = {
@@ -240,10 +243,10 @@
           return hit ? hit.owner : null;
         }, function () { return null; });
     }
-    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design"),
-                 find("data/videos.json", "videos", "video")])
+    // not from the videos: the player's page shows no videos yet
+    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design")])
       .then(function (r) {
-        var owner = r[0] || r[1] || r[2];
+        var owner = r[0] || r[1];
         if (!owner) return;
         document.getElementById("items-profile-link").href = "profile.html?p=" + owner;
         p.hidden = false;
@@ -269,7 +272,8 @@
       var body = document.createElement("div");
       body.className = "item-body";
       body.appendChild(text("b", item.title || "Untitled"));
-      var facts = [ITEM_KINDS[item.kind] || item.kind, ITEM_STATES[item.state] || item.state];
+      var states = item.kind === "video" ? VIDEO_STATES : ITEM_STATES;
+      var facts = [ITEM_KINDS[item.kind] || item.kind, states[item.state] || item.state];
       if (item.public) facts.push(item.likes === 1 ? "1 like" : (item.likes || 0).toLocaleString("en") + " likes");
       body.appendChild(text("span", facts.join(" · ")));
       li.appendChild(body);

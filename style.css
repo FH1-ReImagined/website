@@ -778,6 +778,8 @@ a.photo-by:hover { color: var(--orange); text-decoration: underline; }
   box-shadow: 0 0 0 2px rgba(241, 227, 206, .35); transition: background-color .2s, transform .25s var(--ease);
 }
 .shots.videos li > button:hover::after, .shots.videos li > button:focus-visible::after { background-color: rgba(208, 112, 63, .9); transform: scale(1.06); }
+a.video-link { text-decoration: none; }
+a.video-link:hover, a.video-link:focus-visible { color: var(--orange); text-decoration: underline; }
 .video-len {
   position: absolute; z-index: 1; right: 10px; bottom: 10px; padding: 4px 8px; border-radius: 8px; line-height: 1.2;
   background: rgba(20, 14, 10, .8); color: #f4ebdd; font: 700 13px/1.2 var(--font-ui); letter-spacing: .04em; font-variant-numeric: tabular-nums;

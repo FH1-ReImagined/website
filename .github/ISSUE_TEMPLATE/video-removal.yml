@@ -10,7 +10,7 @@ body:
     id: video
     attributes:
       label: Which video
-      description: Its title and gamertag, or its address (open it on the videos page and copy the video's address).
+      description: The link of its title on the videos page (right-click the title, copy the link), like https://forza.dyotson.dev/videos.html#video-ABCDEFGHIJKL.
     validations:
       required: true
   - type: dropdown

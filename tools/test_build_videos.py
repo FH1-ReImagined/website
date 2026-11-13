@@ -125,6 +125,8 @@ def fixtures():
     bad["pngposter"] = add("pngposter", mp4("pp"), png.getvalue(), NOW - 2006, "PNG poster")
     bad["bigposter"] = add("bigposter", mp4("bg"), jpeg(scene(3840, 2160, 17, "big")), NOW - 2007, "Huge poster")
     bad["missing"] = add("missing", None, None, NOW - 2008, "404", sha="1" * 64, psha="2" * 64, size=100)
+    # a clip so short its length rounds to 0.0: the site's check would refuse it, so the build does
+    bad["zero"] = add("zero", mp4("zero"), poster(19), NOW - 2010, "Too short", seconds=0.04)
     offsite = add("offsite", mp4("off"), poster(18), NOW - 2009, "Elsewhere")
     entries[-1]["video"] = "http://198.51.100.7/community/video/%s.mp4" % offsite
     bad["offsite"] = offsite
@@ -363,8 +365,12 @@ def check_pages(browser, site, order, expect, profile):
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in page.tags),
               "the player's markup is not turned into elements")
         check(any(t == "time" for t, a in page.tags) and "Shared" in text, "each card says when it was shared")
-        by = {a.get("href") for t, a in page.tags if t == "a" and a.get("class") == "photo-by"}
-        check(f"profile.html?p={OWNER_A}" in by, "the gamertag links to the player's page")
+        check(not any(t == "a" and "profile.html" in a.get("href", "") for t, a in page.tags),
+              "the gamertag is plain text (the player pages show no videos yet)")
+        links = [a.get("href") for t, a in page.tags if t == "a" and "video-link" in a.get("class", "")]
+        check(links == [f"#video-{i}" for i in order], "each title links to its own card (the address to report)")
+        cards_ids = [a.get("id") for t, a in page.tags if t == "li" and a.get("id", "").startswith("video-")]
+        check(cards_ids == [f"video-{i}" for i in order], "and each card has that id")
         likes = [a for t, a in page.tags if t == "a" and "like" in a.get("class", "").split()]
         check(len(likes) == len(order) and any(a.get("aria-label", "").startswith("7 likes") for a in likes),
               "a like total on each video (7 on the first)")

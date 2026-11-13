@@ -45,7 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Pillow's pixel limit and turns its decompression-bomb warning into an error).
 from build_gallery import (Refused, Unreachable, clean_text, fetch, is_int, owner_of, prune_cache, read_likes,  # noqa: E402
                            write_atomic)
-from check_site import mp4_boxes  # noqa: E402  (the same check the site's check makes)
+from check_site import mp4_boxes, video_problems  # noqa: E402  (the site's own checks)
 
 MAX_VIDEOS = 100                     # the newest; older ones are dropped (and logged)
 MAX_MB = 700                         # the MP4s together (GitHub Pages: 1 GB for the whole site)
@@ -328,6 +328,13 @@ def main():
             v["likes"] = likes.get(vid, 0)
         v.update(src=f"videos/{vid}.mp4", poster=f"videos/{vid}.jpg", w=w, h=h, seconds=e["seconds"],
                  size=len(mp4), date=e["approvedAt"])
+        problems = video_problems(args.out, vid, v)
+        if problems:  # what tools/check_site.py would refuse never reaches the site (or stops it)
+            warn(f"refused {vid}: {'; '.join(problems)[:300]}")
+            (out_dir / f"{vid}.mp4").unlink(missing_ok=True)
+            (out_dir / f"{vid}.jpg").unlink(missing_ok=True)
+            refused += 1
+            continue
         videos.append(v)
 
     write_videos(args.out, videos)

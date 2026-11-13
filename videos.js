@@ -2,9 +2,11 @@
 // converted them to MP4 and they passed the screening. The site's builds copy them from the Forza
 // Live server (tools/build_videos.py) into videos/ and data/videos.json, newest first; the newest
 // show before the next build has them (live.js, data-videos-live). Each card is the video's
-// poster (a button that opens the player), its title, when it was shared and how long it is, who
-// shared it (a link to their page, profile.html?p=<owner>) and its likes (likes.js). Titles and
-// gamertags are the players' own text: they go in with textContent only.
+// poster (a button that opens the player), its title (a link to the card itself,
+// videos.html#video-<id>, the address to give when asking for a video to be removed), when it was
+// shared and how long it is, who shared it (plain text: the player pages show no videos yet) and
+// its likes (likes.js). Titles and gamertags are the players' own text: they go in with
+// textContent only.
 //
 // The player (dialog#player) loads a video only when it opens, and drops it when it closes, so a
 // visitor downloads only what they watch. On a phone it fills the screen; the video's own controls
@@ -25,7 +27,6 @@
   }
   function text(v) { return typeof v === "string" ? v : ""; }
   function size(v) { return typeof v === "number" && v > 0 && v < 100000 ? Math.round(v) : 0; }
-  function owner(v) { return /^[0-9a-f]{12}$/.test(text(v.owner)) ? v.owner : ""; }
   function usable(v) {
     return v && /^[A-Z2-7]{12}$/.test(text(v.id)) && v.src === "videos/" + v.id + ".mp4" &&
       v.poster === "videos/" + v.id + ".jpg" && text(v.gamertag) && size(v.w) && size(v.h) &&
@@ -116,21 +117,17 @@
     b.addEventListener("click", function () { play(v, b); });
     li.append(b);
     var body = el("div", "", "photo-body");
-    body.append(el("b", title || "Untitled clip", "photo-title"));
+    var name = el("a", title || "Untitled clip", "photo-title video-link");
+    name.href = "#video-" + v.id;
+    name.setAttribute("aria-label", "Link to this video: " + (title || "Untitled clip"));
+    body.append(name);
     var when = el("span", "", "photo-where");
     var t = el("time", day(v.date));
     t.dateTime = new Date(v.date * 1000).toISOString();
     when.append(document.createTextNode("Shared "), t);
     body.append(when);
     var foot = el("div", "", "photo-foot");
-    if (owner(v)) {
-      var by = el("a", tag, "photo-by");
-      by.href = "profile.html?p=" + owner(v);
-      by.setAttribute("aria-label", "More from " + tag);
-      foot.append(by);
-    } else {
-      foot.append(el("span", tag, "photo-by"));
-    }
+    foot.append(el("span", tag, "photo-by"));  // not a link: the player's page shows no videos yet
     if (window.FHLikes) foot.append(window.FHLikes.slot("video", v.id, v.likes));
     body.append(foot);
     li.append(body);

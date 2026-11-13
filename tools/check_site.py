@@ -138,43 +138,48 @@ def check_videos(root):
         bad.append(f"data/videos.json: unexpected fields {sorted(set(doc) - {'version', 'generated', 'videos'})}")
     listed = set()
     for i, v in enumerate(doc["videos"]):
-        where = f"data/videos.json video {i}"
-        if not isinstance(v, dict) or not re.fullmatch(r"[A-Z2-7]{12}", str(v.get("id"))):
-            bad.append(f"{where}: no id")
-            continue
-        vid = v["id"]
-        if set(v) - VIDEO_KEYS:
-            bad.append(f"{where}: unexpected fields {sorted(set(v) - VIDEO_KEYS)}")
-        if not (isinstance(v.get("gamertag"), str) and v["gamertag"] and isinstance(v.get("title"), str)):
-            bad.append(f"{where}: no gamertag or title")
-        bad += check_owner_and_likes(where, v)
-        s = v.get("seconds")
-        if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 < s <= 600 or not is_count(v.get("date"), MAX_TIME):
-            bad.append(f"{where}: bad seconds or date")
-        if v.get("src") != f"videos/{vid}.mp4" or v.get("poster") != f"videos/{vid}.jpg":
-            bad.append(f"{where}: src/poster are not videos/{vid}.mp4 and videos/{vid}.jpg")
-            continue
-        if not (is_size(v.get("w"), POSTER_WIDTH) and is_size(v.get("h"), MAX_SIDE) and is_size(v.get("size"), MAX_VIDEO_BYTES)):
-            bad.append(f"{where}: sizes out of range")
-            continue
-        listed.update((v["src"], v["poster"]))
-        if not (root / v["src"]).is_file():
-            bad.append(f"{where}: missing {v['src']}")
-        else:
-            data = (root / v["src"]).read_bytes()
-            if len(data) != v["size"]:
-                bad.append(f"{where}: {v['src']} is {len(data)} bytes, data/videos.json says {v['size']}")
-            try:
-                mp4_boxes(data)
-            except ValueError as e:
-                bad.append(f"{v['src']}: {e}")
-        if not (root / v["poster"]).is_file():
-            bad.append(f"{where}: missing {v['poster']}")
-        else:
-            bad += check_jpeg(root / v["poster"], v["w"], v["h"], POSTER_WIDTH)
+        bad += video_problems(root, f"data/videos.json video {i}", v)
+        if isinstance(v, dict):
+            listed.update((str(v.get("src")), str(v.get("poster"))))
     if (root / "videos").is_dir():
         bad += [f"videos/{f.name}: not in data/videos.json"
                 for f in sorted((root / "videos").iterdir()) if f"videos/{f.name}" not in listed]
+    return bad
+
+
+def video_problems(root, where, v):
+    """What is wrong with one entry of data/videos.json and its files ([] for none).
+    tools/build_videos.py leaves out any entry this finds wrong, so one entry never stops a build."""
+    bad = []
+    if not isinstance(v, dict) or not re.fullmatch(r"[A-Z2-7]{12}", str(v.get("id"))):
+        return [f"{where}: no id"]
+    vid = v["id"]
+    if set(v) - VIDEO_KEYS:
+        bad.append(f"{where}: unexpected fields {sorted(set(v) - VIDEO_KEYS)}")
+    if not (isinstance(v.get("gamertag"), str) and v["gamertag"] and isinstance(v.get("title"), str)):
+        bad.append(f"{where}: no gamertag or title")
+    bad += check_owner_and_likes(where, v)
+    s = v.get("seconds")
+    if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 < s <= 600 or not is_count(v.get("date"), MAX_TIME):
+        bad.append(f"{where}: bad seconds or date")
+    if v.get("src") != f"videos/{vid}.mp4" or v.get("poster") != f"videos/{vid}.jpg":
+        return bad + [f"{where}: src/poster are not videos/{vid}.mp4 and videos/{vid}.jpg"]
+    if not (is_size(v.get("w"), POSTER_WIDTH) and is_size(v.get("h"), MAX_SIDE) and is_size(v.get("size"), MAX_VIDEO_BYTES)):
+        return bad + [f"{where}: sizes out of range"]
+    if not (root / v["src"]).is_file():
+        bad.append(f"{where}: missing {v['src']}")
+    else:
+        data = (root / v["src"]).read_bytes()
+        if len(data) != v["size"]:
+            bad.append(f"{where}: {v['src']} is {len(data)} bytes, data/videos.json says {v['size']}")
+        try:
+            mp4_boxes(data)
+        except ValueError as e:
+            bad.append(f"{v['src']}: {e}")
+    if not (root / v["poster"]).is_file():
+        bad.append(f"{where}: missing {v['poster']}")
+    else:
+        bad += check_jpeg(root / v["poster"], v["w"], v["h"], POSTER_WIDTH)
     return bad
 
 
