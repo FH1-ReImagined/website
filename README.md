@@ -55,7 +55,8 @@ test and keep its site up (needs Pillow, `pip install -r tools/requirements.txt`
 minute 17) with a fresh copy of the public server's `/leaderboards/snapshot`, because the
 server speaks plain http and the https page cannot fetch it from the browser. A scheduled run
 that cannot reach the server fails and leaves the published site as it was. Pull requests run
-`tools/check_site.py` on the assembled site (local links and images, the data files),
+`tools/check_site.py` on the assembled site (local links and images, the data files, and each page's
+accessibility basics: a language, alt text and sizes on pictures, labelled controls, named buttons, headings in order),
 `tools/test_build_gallery.py`, `tools/test_build_designs.py` and `tools/test_account_page.py`.
 
 The same workflow copies the community photos: the photos players share from the game's photo
