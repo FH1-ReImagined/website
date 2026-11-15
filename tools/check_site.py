@@ -19,6 +19,9 @@ and posters without metadata.
 When Photo of the Month was (tools/build_potm.py), data/photo-of-the-month.json: only the fields
 the pages show, months and ids that are months and ids, counts that are counts, and every photo
 it names one that data/gallery.json lists, with the same files.
+Every page's own markup has a language, alt text and width and height on its pictures, a label
+on each form control, a name on each button, one h1, headings that skip no level, each id once and
+ARIA references to ids that are there.
 Photo of the Month is wholly on or wholly off (tools/potm_switch.py): its navbar and footer links,
 sitemap entries, noindex, switched elements and the home page's winner section all in the same
 state, never half, and none of them written in another form than the switch's own; while it is off,
@@ -425,6 +428,84 @@ def markup_from_text(text):
         s and not re.fullmatch(r"\.\./[a-z]+\.js", s) for s in p.scripts)
 
 
+class _A11y(html.parser.HTMLParser):
+    """The parts of a page's own markup a screen reader or a keyboard needs (the lists the scripts
+    fill in are checked by the tests in headless Chrome)."""
+    VOID = {"input", "select", "textarea"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.lang = None
+        self.bad, self.ids, self.labels, self.controls, self.levels = [], set(), set(), [], []
+        self.refs = []
+        self.label_depth, self.button = 0, None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if a.get("id"):
+            if a["id"] in self.ids:
+                self.bad.append(f'id="{a["id"]}" twice')
+            self.ids.add(a["id"])
+        for name in ("aria-labelledby", "aria-describedby", "aria-controls"):
+            self.refs += [(name, ref) for ref in a.get(name, "").split()]
+        if tag == "html":
+            self.lang = a.get("lang")
+        elif tag == "img":
+            if self.button is not None:  # a picture button is named by its picture's alt text
+                self.button[1] += a.get("alt") or ""
+            if "alt" not in a:
+                self.bad.append(f"<img src=\"{a.get('src', '')}\"> has no alt (alt=\"\" for a picture that says nothing)")
+            elif a.get("src") and not (a.get("width") and a.get("height")):
+                self.bad.append(f"<img src=\"{a['src']}\"> needs width and height (the page jumps when it loads)")
+        elif tag == "label":
+            self.label_depth += 1
+            if a.get("for"):
+                self.labels.add(a["for"])
+        elif tag in self.VOID and a.get("type") not in ("hidden", "submit", "button"):
+            named = self.label_depth or a.get("aria-label") or a.get("aria-labelledby") or a.get("title")
+            self.controls.append((a.get("id"), bool(named), f"<{tag} {a.get('id') or a.get('name') or ''}>"))
+        elif tag == "button":
+            self.button = [bool(a.get("aria-label") or a.get("aria-labelledby")), ""]
+        elif re.fullmatch(r"h[1-6]", tag):
+            self.levels.append(int(tag[1]))
+
+    def handle_endtag(self, tag):
+        if tag == "label":
+            self.label_depth = max(0, self.label_depth - 1)
+        elif tag == "button" and self.button is not None:
+            if not self.button[0] and not self.button[1].strip():
+                self.bad.append("a <button> with no text and no aria-label")
+            self.button = None
+
+    def handle_data(self, data):
+        if self.button is not None:
+            self.button[1] += data
+
+
+def a11y_problems(text):
+    """What a page's own markup lacks: a language, alt text and dimensions on its pictures, a label
+    on each form control, a name on each button, one h1, headings that skip no level, ids used once
+    and ARIA references to ids that are there."""
+    p = _A11y()
+    p.feed(text)
+    bad = list(p.bad)
+    if not p.lang:
+        bad.append("<html> needs lang")
+    for name, ref in p.refs:
+        if ref not in p.ids:
+            bad.append(f'{name}="{ref}" names no element of the page')
+    for cid, named, what in p.controls:
+        if not named and cid not in p.labels:
+            bad.append(f"{what} has no label")
+    if p.levels.count(1) != 1:
+        bad.append(f"{p.levels.count(1)} <h1> (one per page)")
+    for a, b in zip(p.levels, p.levels[1:]):
+        if b > a + 1:
+            bad.append(f"<h{a}> followed by <h{b}> (a heading level skipped)")
+            break
+    return bad
+
+
 HUB_KEYS = {"id", "kind", "title", "description", "version", "author", "created", "published", "size", "files",
             "sha256", "folder", "likes", "download"}
 
@@ -649,6 +730,7 @@ def main():
             bad.append(f"{page.name}: needs a title, description and canonical URL")
         if "Official links:" not in text:
             bad.append(f"{page.name}: the footer needs the Official links note")
+        bad += [f"{page.name}: {p}" for p in a11y_problems(text)]
         # A page kept out of search engines is not in the sitemap either.
         if 'content="noindex"' in text and f"https://forza.dyotson.dev/{page.name}" in sm:
             bad.append(f"sitemap.xml: {page.name} has noindex, so it is not for search engines")

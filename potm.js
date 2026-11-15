@@ -197,9 +197,11 @@
   function showMonth(m, where) {
     var head = where.querySelector("[data-potm-head]"), list = where.querySelector("[data-potm-list]");
     var note = where.querySelector("[data-potm-note]");
+    if (head && head.potmDefault === undefined) head.potmDefault = head.textContent;  // "This month"
     if (!m || !MONTH.test(text(m.month))) {
       where.hidden = where.hasAttribute("data-potm-optional");
-      if (head) head.textContent = "";
+      // a section still shown keeps its heading: an empty one names nothing for a screen reader
+      if (head) head.textContent = where.hidden ? "" : head.potmDefault;
       if (list) list.replaceChildren();
       if (note) note.textContent = "Photo of the Month has not started yet.";
       return;
