@@ -16,7 +16,7 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `fonts/` | Bitter for headlines and Saira Semi Condensed for labels and buttons (SIL Open Font License, `fonts/OFL-*.txt`); the text is in the system font. The headline font is one CSS variable, `--font-headline`: `style.css` says how to put another in its place |
 | `leaderboards.html`, `leaderboards.js` | the public server's leaderboards on a map of Colorado |
 | `gallery.html`, `photos.js` | the community photos (also the landing page's newest three) and the photo viewer for every picture button: it slides through the pictures of its list (arrow buttons and keys, Home and End, swipe or drag), loads the neighbours ahead, and shows a picture only once it has loaded |
-| `videos.html`, `videos.js` | the community videos (Community > Videos): the replay clips players upload from the game, once the game server has converted them to MP4 and they passed the screening. A grid of posters with each clip's title (a link to its own card, `videos.html#video-<id>`: the address to give when asking for a removal), length, the day it was shared, the player (plain text: the player pages show no videos yet) and its likes; a click opens the player, which loads the video only then and drops it when it closes. The newest show before the next build has them (`live.js`). Its rules say how to delete one's own video (the account page, where a video is "Being converted" or "Waiting to be checked" before it is on the site) and how to ask for one to be removed (the `video-removal` issue template, or the Discord) |
+| `videos.html`, `videos.js` | the community videos (Community > Videos): the replay clips players upload from the game, once the game server has converted them to MP4 and they passed the screening. A grid of posters with each clip's title (a link to its own card, `videos.html#video-<id>`: the address to give when asking for a removal), length, the day it was shared, the player (a link to their page) and its likes; a click opens the player, which loads the video only then and drops it when it closes. The newest show before the next build has them (`live.js`). Its rules say how to delete one's own video (the account page, where a video is "Being converted" or "Waiting to be checked" before it is on the site) and how to ask for one to be removed (the `video-removal` issue template, or the Discord) |
 | `designs.html`, `designs.js` | the paint jobs and vinyl groups players share, with their share codes (also the Online page's newest three). Each design the build has also gets a page of its own, `designs/<id>.html`, made by `tools/build_designs.py`: its picture, name, car, creator (a link to their player page when the server gives a player id), the day it was shared, its rating, downloads and likes (the cards' like control), its share code with the Copy button and the steps to get it in the game, with its own title, description, canonical address and social preview (the design's picture), and a link back to its card. A card's title (and the whole card) links to the page; a design only the live feed lists yet has no page until the next build, so its card links nowhere |
 | `account.html`, `account.js` | website accounts: sign in with Discord, GitHub or an emailed code, see the account, link it to the game, sign out everywhere, delete it. The launcher's "Link to website account" opens `account.html#link=<token>` (the page moves the token into `localStorage` for its 10 minutes and out of the address at once, so an email sign-in whose mail link opens another tab still finds it; it is removed once the link is done, declined or refused), or shows a code that is typed on this page; the page claims the link for the signed-in account, and the player confirms the account id in the launcher. A game can be linked once it has one speed trap or record on the public server, from any time, before this update too (single player is enough: no lobby or online play); the page says so next to the link code, and shows the service's own message when it refuses. Signed out, the page shows "How it works" (sign in here, Link in the launcher's Online > Online > Website account, or Settings > Online before launcher 0.2.9, confirm), and says photos and designs come from the game. A linked account shows its game's gamertag and can unlink it, and lists the game's photos and designs in every state (live, waiting for the check, held, hidden) with their likes; the player can delete them there (after a sign-in in the past 10 minutes). It talks to the accounts service at `/api/` on the same site ([forza-live, `accounts/`](https://github.com/FH1-ReImagined/forza-live/tree/main/accounts)); a copy of the site without `/api/` says accounts are not available. The navbar's "Sign in" link says "Account", and its Download goes, once this browser signed in (a `localStorage` hint) |
 | `photo-of-the-month.html`, `potm.js` | Photo of the Month: this month's standings (live from the accounts service's public `/api/potm/standings`, sent without cookies, refreshed every minute; the built copy when it cannot be read), with each entry's like button and share buttons (the system share sheet, copy link, X, Bluesky, Reddit, Facebook: plain links, nothing loaded from them), last month (being checked, or its winner) and the past winners. `potm.js` also shows the newest winner on the front page (from the built file only: no API call) and fills the rules page's numbers |
@@ -25,13 +25,13 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `live.js` | the newest photos, videos and designs before the next build has them: `gallery.html`, `videos.html` and `designs.html` read the game server's public feeds through this site at `/live/community/gallery.json`, `videos.json` and `designs.json` (a video only the feed lists plays from `/live/community/video/<id>.mp4`, with its poster beside it) (a read-only route the site's web server passes on, cached for a few seconds), check each entry as the builds do, and show the feed's items in its order, with the build's copy of each one the build already has; an item the feed no longer lists (hidden or deleted) leaves the page at once. A copy of the site without the route shows the build's data |
 | `online.js` | the landing page's "N players online now" under the download button: it reads the game server's public count of players online through this site at `/live/community/online.json` (counts only, no gamertags or ids), on load and every minute while the tab is visible, and keeps the badge hidden with no feed, a malformed or stale one (older than five minutes) or nobody online |
 | `likes.js` | the thumbs-up on photos, videos and designs. Everyone sees the totals built into the data files; only a visitor who signed in on this browser (the hint) makes the pages ask `/api/likes/mine` and `/api/likes/counts`, and gets a working button when the account is linked to the game; its likes count in the public totals as soon as the link is made. When the service refuses (not linked, the link on hold, no speed trap or record yet), the thumbs-up says why when pressed. The other pages never call the API for anyone else, except the Photo of the Month page's public standings |
-| `profile.html`, `profile.js` | a player's page, `profile.html?p=<player id>`: their photos and designs and the likes they got, from the site's own data files (the player id is the one the server publishes on its leaderboards, never a XUID). Nothing about the web account. Not indexed |
+| `profile.html`, `profile.js` | a player's page, `profile.html?p=<player id>`: their photos, videos and designs and the likes they got, from the site's own data files (a video's title links to its card on the Videos page, and it plays in the same player; a player with no videos gets no Videos section) (the player id is the one the server publishes on its leaderboards, never a XUID). Nothing about the web account. Not indexed |
 | `press.html` | the press kit: facts, logo, social preview, screenshots and links |
 | `faq.html` | common questions (recomp or emulator, your own copy, online, Steam Deck, Mac, requirements, linking a website account to the game), with FAQPage structured data |
 | `images/` | screenshots; the logo (`logo-original.png`, and made from it: `logo-mark.webp`/`.png` for the navbar, the landing page and the footer, `logo.png` and `logo.svg` square, `favicon-32.png`, `apple-touch-icon.png`); the social preview (drawn from the logo and plain text, no game assets); the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
-| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py`, `build_designs.py`, `build_videos.py`, `build_hub.py` and `build_potm.py` and their tests `test_build_gallery.py`, `test_build_designs.py`, `test_build_videos.py`, `test_build_hub.py` and `test_build_potm.py`, `test_account_page.py`, and `test_live_community.py` (not published), plus `site_hook.py` and `build_community.sh` for a self-hosted builder |
+| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py`, `build_designs.py`, `build_videos.py`, `build_hub.py` and `build_potm.py` and their tests `test_build_gallery.py`, `test_build_designs.py`, `test_build_videos.py`, `test_build_hub.py` and `test_build_potm.py`, `potm_switch.py` (Photo of the Month on or off) and `test_potm_switch.py`, `test_account_page.py`, and `test_live_community.py` (not published), plus `site_hook.py` and `build_community.sh` for a self-hosted builder |
 
 ## Preview
 
@@ -111,8 +111,6 @@ sitemap entries. It makes each download address itself, from the service's downl
 https origin that is not this site) and the item's SHA-256 and folder. While the hub is off
 (HTTP 404) the file says `"on": false` and no page is made.
 
-**Photo of the Month is hidden until the contest runs**: to show it again, put back its links in every page's navbar (Community) and footer, its two `sitemap.xml` entries, and drop the `noindex` from `photo-of-the-month.html` and `photo-of-the-month-rules.html` (and `photo-of-the-month.html` from `NOT_IN_NAV` in `tools/check_site.py`); the home page's section shows itself once there is a winner.
-
 Photo of the Month comes from the accounts service too: `tools/build_potm.py` (after the
 gallery) reads its public `/api/potm/winners` and `/api/potm/standings` (this month and the month
 before) from the repository variable `POTM_URL`, or else from `LIKES_URL`'s site, and writes
@@ -136,6 +134,44 @@ The map and its pins are built from a copy of the game in the game's repository
 (`tools/build_map_roads.py`, `tools/extract_map_points.py`, described in forza-live's
 [`docs/hosting.md`](https://github.com/FH1-ReImagined/forza-live/blob/main/docs/hosting.md))
 and committed here; nothing of the game is in this repository.
+
+## Switching Photo of the Month on and off
+
+Photo of the Month is switched off until the contest runs. One command switches the whole site:
+
+    tools/potm_switch.py status   # on or off; or what is half switched (exit 1)
+    tools/potm_switch.py on
+    tools/potm_switch.py off
+
+| | Off | On |
+|---|---|---|
+| Navbar (Community) and footer of every page | no link | "Photo of the Month" right after Photos; the current page on its own page |
+| `sitemap.xml` | neither page | both pages, after the gallery |
+| `photo-of-the-month.html`, `photo-of-the-month-rules.html` | `noindex` | indexed |
+| Elements marked `data-potm-switch` | hidden | shown |
+| The home page's winner section (`data-potm-featured`) | marked `data-potm-off`: hidden, even with a winner | shown once there is a winner |
+
+Off means nothing of the contest is shown or linked outside its own two pages. The marked elements
+are the announcement (on the home page and the contest page) and the winner's credit (in the home
+page's winner section and the rules). The winner section, with its "Vote this month" link, stays
+hidden while the contest is off even when `data/photo-of-the-month.json` has a winner. The hub's
+item pages copy the navbar of `mods.html`, so they follow.
+
+Switching on and then off again gives back the same files, byte for byte; switching to the state
+the site is already in changes nothing; a half switched site is finished in the state asked for. A
+page that has lost the line the switch writes next to (its Photos link, its canonical link) stops
+the switch before it writes anything, and so does a link, a `noindex` or a mark written in another
+form than the switch's own (other attributes, spacing or case). `tools/check_site.py` refuses a site
+that is half switched or has such a part, refuses an off site where any other page still links to
+the contest outside what the switch hides, and keeps `photo-of-the-month.html` out of the navbar
+check while the contest is off.
+`tools/test_potm_switch.py` tests all of this on a copy of the site.
+
+Before switching on, the text still to be decided has to be written. It is marked
+`class="potm-placeholder"`, and `status` and `on` list it: whether there is a prize (the rules
+page), the announcement and how the winner is credited. Each placeholder only says "To be
+announced" and that it is not decided yet: no prize, no dates, no title for the winner. Switch on
+and write it in the same pull request.
 
 ## History
 

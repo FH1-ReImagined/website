@@ -12,9 +12,12 @@ another host), the cache (a second build downloads nothing; a withdrawn video le
 the cache), the caps (videos and MB), a server without the videos feed (404: no videos, exit 0),
 and an unset, unreachable or broken feed. Then, in a headless Chrome or Chromium (CHROME=path,
 else one on PATH or Playwright's): videos.html lists the videos with their posters, titles as
-text, length, date, gamertag link and like total, the empty and error states, the player (a click
-opens it with the video, closing it drops the video), and at a phone's width one column and no
-sideways scrolling.
+text, length, date, gamertag link (to the player's page, for an owner id only) and like total, the
+empty and error states, the player (a click opens it with the video, closing it drops the video),
+and at a phone's width one column and no sideways scrolling; profile.html?p=<owner> lists only that
+player's videos (poster, title linking to its card on videos.html, date, likes, the same player),
+counts only the videos it draws, plays them, fits a phone, and shows no videos section for a
+player who has none.
 
   python3 tools/test_build_videos.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_videos.py --serve 8000   # then serve the fixture site for a look
@@ -289,7 +292,7 @@ PLAYER_TEST = r"""
     out.shown = true;
     done();
     setTimeout(function () {
-      var b = document.querySelector("#videos > li button.video-open");
+      var b = document.querySelector("[data-videos] > li button.video-open");
       if (!b) { out.error = "no card"; return done(); }
       out.label = b.getAttribute("aria-label");
       b.focus();  // as a visitor's click or key does
@@ -318,7 +321,7 @@ NARROW_TEST = r"""
   var frame = document.querySelector("iframe");
   setTimeout(function () {
     var d = frame.contentDocument, w = frame.contentWindow;
-    var cards = Array.prototype.map.call(d.querySelectorAll("#videos > li"), function (li) {
+    var cards = Array.prototype.map.call(d.querySelectorAll("[data-videos] > li"), function (li) {
       var r = li.getBoundingClientRect();
       return { l: Math.round(r.left), w: Math.round(r.width) };
     });
@@ -365,8 +368,11 @@ def check_pages(browser, site, order, expect, profile):
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in page.tags),
               "the player's markup is not turned into elements")
         check(any(t == "time" for t, a in page.tags) and "Shared" in text, "each card says when it was shared")
-        check(not any(t == "a" and "profile.html" in a.get("href", "") for t, a in page.tags),
-              "the gamertag is plain text (the player pages show no videos yet)")
+        by = [a.get("href") for t, a in page.tags if t == "a" and "photo-by" in a.get("class", "").split()]
+        check(by == [f"profile.html?p={OWNER_A}", f"profile.html?p={OWNER_B}"],
+              f"the gamertag links to the player's page, only for a player id ({by})")
+        check(sum(1 for t, a in page.tags if t == "span" and "photo-by" in a.get("class", "").split()) == 2,
+              "and is plain text without one (a leaked XUID is not an id)")
         links = [a.get("href") for t, a in page.tags if t == "a" and "video-link" in a.get("class", "")]
         check(links == [f"#video-{i}" for i in order], "each title links to its own card (the address to report)")
         cards_ids = [a.get("id") for t, a in page.tags if t == "li" and a.get("id", "").startswith("video-")]
@@ -394,6 +400,64 @@ def check_pages(browser, site, order, expect, profile):
         check(bool(r) and r.get("calls") == ["play", "load"], "it plays at once, and closing stops the download")
         check(bool(r) and r.get("closed") and r.get("srcAfter") is None and r.get("focus"),
               f"closing it drops the video and gives focus back to the card ({r and (r.get('closed'), r.get('srcAfter'), r.get('focus'))})")
+
+        # a player's page: only their videos, linked back to the Videos page, without their gamertag
+        for who, mine, tag in ((OWNER_A, [order[0]], "Synthetic One"), (OWNER_B, [order[1]], "Synthetic Two")):
+            prof, _ = browser_run(browser, base + f"/profile.html?p={who}", profile)
+            listed = [a["id"][6:] for t, a in prof.tags if t == "li" and a.get("id", "").startswith("video-")]
+            check(listed == mine, f"profile.html?p={who}: only that player's videos ({listed})")
+            check(prof.shown("profile-videos"), f"profile.html?p={who}: the Videos section is shown")
+            posters = [a.get("src") for t, a in prof.tags if t == "img" and a.get("src", "").startswith("videos/")]
+            check(posters == [f"videos/{i}.jpg" for i in mine], f"profile.html?p={who}: the posters")
+            links = [a.get("href") for t, a in prof.tags if t == "a" and "video-link" in a.get("class", "")]
+            check(links == [f"videos.html#video-{i}" for i in mine],
+                  f"profile.html?p={who}: each title links to the video's card on the Videos page ({links})")
+            check(any(t == "time" for t, a in prof.tags) and "Shared" in prof.text(), f"profile.html?p={who}: the date")
+            check(not any(t == "a" and a.get("href", "").startswith("profile.html") for t, a in prof.tags),
+                  f"profile.html?p={who}: no link to the page it is on")
+            check(tag in [x.strip() for x in prof.texts] and any("1 video " in x for x in prof.texts),
+                  f"profile.html?p={who}: their gamertag (from the video) and how many videos")
+        prof, _ = browser_run(browser, base + f"/profile.html?p={OWNER_A}", profile)
+        check(any("0 photos · 1 video · 0 designs · 7 likes" in x for x in prof.texts),
+              "profile.html: the video's likes count in the player's total")
+        check(any(t == "a" and "like" in a.get("class", "").split() and a.get("aria-label", "").startswith("7 likes")
+                  for t, a in prof.tags), "profile.html: the video's like total on its card")
+        nobody = "abcdef012345"
+        prof, _ = browser_run(browser, base + f"/profile.html?p={nobody}", profile)
+        check(not prof.shown("profile-videos") and not any(t == "li" and a.get("id", "").startswith("video-")
+                                                            for t, a in prof.tags)
+              and "no photos, videos or designs" in prof.text(),
+              "profile.html: a player with no videos gets no Videos section")
+        # entries videos.js does not draw (a poster that is not the video's own, no length, no gamertag):
+        # the heading does not count them either
+        data = site / "data" / "videos.json"
+        built = data.read_text(encoding="utf-8")
+        doc = json.loads(built)
+        mine = next(v for v in doc["videos"] if v["id"] == order[0])
+        odd = [dict(mine, id=vid("odd-poster"), src=f"videos/{vid('odd-poster')}.mp4"),
+               dict(mine, id=vid("no-length"), src=f"videos/{vid('no-length')}.mp4",
+                    poster=f"videos/{vid('no-length')}.jpg", seconds=0),
+               dict(mine, id=vid("no-tag"), src=f"videos/{vid('no-tag')}.mp4", poster=f"videos/{vid('no-tag')}.jpg",
+                    gamertag="")]
+        alone = dict(odd[1], owner=nobody)  # a player whose only video is one not drawn
+        data.write_text(json.dumps(dict(doc, videos=odd + doc["videos"] + [alone])))
+        prof, _ = browser_run(browser, base + f"/profile.html?p={OWNER_A}", profile)
+        listed = [a["id"][6:] for t, a in prof.tags if t == "li" and a.get("id", "").startswith("video-")]
+        check(listed == [order[0]] and any("0 photos · 1 video · 0 designs · 7 likes" in x for x in prof.texts),
+              f"profile.html: a video that is not drawn is not counted either ({listed})")
+        prof, _ = browser_run(browser, base + f"/profile.html?p={nobody}", profile)
+        check(not prof.shown("profile-videos") and "no photos, videos or designs" in prof.text(),
+              "profile.html: a player whose only video is not drawn has nothing on the site")
+        data.write_text(built, encoding="utf-8")
+        (site / "profile-player-test.html").write_text((site / "profile.html").read_text(encoding="utf-8").replace(
+            '<script src="videos.js"></script>', '<script src="player-test.js"></script>\n<script src="videos.js"></script>'))
+        for _ in range(3):
+            _, r = browser_run(browser, base + f"/profile-player-test.html?p={OWNER_B}", profile)
+            if r and r.get("final"):
+                break
+        check(bool(r) and r.get("open") and r.get("src") == f"videos/{order[1]}.mp4"
+              and r.get("cap", "").startswith("A wide clip | Synthetic Two") and r.get("closed") and r.get("srcAfter") is None,
+              f"profile.html: a click plays the video in the same player, closing it drops it ({r})")
 
         # the live feed (live.js): its order, the build's copy of what the build has, the feed's own
         # routes for a video only it lists, a video it no longer lists left out, a bad entry refused
@@ -423,6 +487,13 @@ def check_pages(browser, site, order, expect, profile):
         check(bool(r) and len(r["cards"]) == len(order) and len({c["l"] for c in r["cards"]}) == 1
               and all(c["l"] >= 12 and c["l"] + c["w"] <= 390 - 12 for c in r["cards"]),  # the gallery's margins
               f"at a phone's width: one column, inside the page's margins ({r and r['cards']})")
+        (site / "narrow-profile.html").write_text('<!doctype html><meta charset="utf-8"><body style="margin:0">'
+                                                  f'<iframe src="profile.html?p={OWNER_B}" width="390" height="2400" style="border:0"></iframe>'
+                                                  '<script src="narrow-test.js"></script></body>')
+        _, r = browser_run(browser, base + "/narrow-profile.html", profile)
+        check(bool(r) and r["width"] == 390 and r["scroll"] <= r["client"] and len(r["cards"]) == 1
+              and all(c["l"] >= 12 and c["l"] + c["w"] <= 390 - 12 for c in r["cards"]),
+              f"profile.html at 390 px wide: the video inside the page's margins, no sideways scrolling ({r})")
 
         (site / "data" / "videos.json").write_text(json.dumps({"version": 1, "generated": NOW, "videos": []}))
         page, _ = browser_run(browser, base + "/videos.html", profile)

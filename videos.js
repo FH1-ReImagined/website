@@ -4,9 +4,11 @@
 // show before the next build has them (live.js, data-videos-live). Each card is the video's
 // poster (a button that opens the player), its title (a link to the card itself,
 // videos.html#video-<id>, the address to give when asking for a video to be removed), when it was
-// shared and how long it is, who shared it (plain text: the player pages show no videos yet) and
-// its likes (likes.js). Titles and gamertags are the players' own text: they go in with
-// textContent only.
+// shared and how long it is, who shared it (a link to their page, profile.html?p=<owner>, the
+// player id the server publishes) and its likes (likes.js). A list with data-videos-owner (the
+// profile page) shows only the videos of the player its address names, newest first, without the
+// gamertag, each title linking to the video's card on the Videos page. Titles and gamertags are
+// the players' own text: they go in with textContent only.
 //
 // The player (dialog#player) loads a video only when it opens, and drops it when it closes, so a
 // visitor downloads only what they watch. On a phone it fills the screen; the video's own controls
@@ -15,7 +17,6 @@
   "use strict";
 
   var lists = Array.prototype.slice.call(document.querySelectorAll("[data-videos]"));
-  if (!lists.length) return;
   var states = Array.prototype.slice.call(document.querySelectorAll("[data-videos-state]"));
   var box = document.getElementById("player");
 
@@ -27,11 +28,16 @@
   }
   function text(v) { return typeof v === "string" ? v : ""; }
   function size(v) { return typeof v === "number" && v > 0 && v < 100000 ? Math.round(v) : 0; }
+  function owner(v) { return /^[0-9a-f]{12}$/.test(text(v.owner)) ? v.owner : ""; }
+  var wanted = owner({ owner: new URLSearchParams(location.search).get("p") });
   function usable(v) {
     return v && /^[A-Z2-7]{12}$/.test(text(v.id)) && v.src === "videos/" + v.id + ".mp4" &&
       v.poster === "videos/" + v.id + ".jpg" && text(v.gamertag) && size(v.w) && size(v.h) &&
       typeof v.seconds === "number" && v.seconds > 0 && typeof v.date === "number";
   }
+  // profile.js counts a player's videos with this same check, so its heading counts what is drawn
+  window.FHVideos = { usable: usable };
+  if (!lists.length) return;
 
   // 0:15, 1:04
   function length(seconds) {
@@ -99,7 +105,7 @@
 
   // ---- the cards ----
 
-  function item(v) {
+  function item(v, onProfile) {
     var title = text(v.title), tag = text(v.gamertag);
     var li = el("li", "", "has-foot");
     li.id = "video-" + v.id;
@@ -118,8 +124,9 @@
     li.append(b);
     var body = el("div", "", "photo-body");
     var name = el("a", title || "Untitled clip", "photo-title video-link");
-    name.href = "#video-" + v.id;
-    name.setAttribute("aria-label", "Link to this video: " + (title || "Untitled clip"));
+    name.href = (onProfile ? "videos.html" : "") + "#video-" + v.id;
+    name.setAttribute("aria-label", (onProfile ? "This video on the Videos page: " : "Link to this video: ") +
+      (title || "Untitled clip"));
     body.append(name);
     var when = el("span", "", "photo-where");
     var t = el("time", day(v.date));
@@ -127,7 +134,14 @@
     when.append(document.createTextNode("Shared "), t);
     body.append(when);
     var foot = el("div", "", "photo-foot");
-    foot.append(el("span", tag, "photo-by"));  // not a link: the player's page shows no videos yet
+    if (owner(v) && !onProfile) {
+      var by = el("a", tag, "photo-by");
+      by.href = "profile.html?p=" + owner(v);
+      by.setAttribute("aria-label", "More from " + tag);
+      foot.append(by);
+    } else if (!onProfile) {
+      foot.append(el("span", tag, "photo-by"));
+    }
     if (window.FHLikes) foot.append(window.FHLikes.slot("video", v.id, v.likes));
     body.append(foot);
     li.append(body);
@@ -136,10 +150,16 @@
 
   function show(videos, failed) {
     lists.forEach(function (list) {
-      var n = parseInt(list.dataset.videos, 10);
-      var shown = n > 0 ? videos.slice(0, n) : videos;
-      list.replaceChildren.apply(list, shown.map(item));
+      var n = parseInt(list.dataset.videos, 10), onProfile = list.hasAttribute("data-videos-owner");
+      var mine = onProfile ? videos.filter(function (v) { return wanted && owner(v) === wanted; }) : videos;
+      var shown = n > 0 ? mine.slice(0, n) : mine;
+      list.replaceChildren.apply(list, shown.map(function (v) { return item(v, onProfile); }));
       list.setAttribute("aria-busy", "false");
+      var section = list.closest("[data-videos-section]");
+      if (section) {
+        section.hidden = !shown.length;
+        if (shown.length && location.hash === "#" + section.id) section.scrollIntoView({ behavior: "instant" });
+      }
     });
     states.forEach(function (s) {
       s.textContent = failed ? "The videos could not be loaded. Try again later."
