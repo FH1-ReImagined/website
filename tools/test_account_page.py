@@ -30,7 +30,8 @@ Checks:
   goes;
 - My items: a linked account lists its game's photos and designs with their state and likes
   (player text as text, thumbnails only for public ones), links to its public page (found in the
-  site's data files), says when its likes do not count yet, drops the speed trap note, and deletes
+  site's data files, also when its only item there is a video; no link while the data does not
+  have it yet), says when its likes do not count yet, drops the speed trap note, and deletes
   an item after a confirm (asking for a recent sign-in when the service says so);
 - on a phone (the list in a 360 px frame) no row is wider than the screen, each Delete is inside
   its row and clear of the text, and the text keeps its width (not one word per line); at 900 px
@@ -160,6 +161,15 @@ ITEMS_TEST = r"""
   }, 2500);
 })();
 """
+PROFILE_TEST = r"""
+setTimeout(function () {
+  var pre = document.createElement("pre");
+  pre.id = "test-results";
+  pre.textContent = JSON.stringify({ rows: document.querySelectorAll("#items-list > li").length,
+    profile: document.getElementById("items-profile").hidden ? null : document.getElementById("items-profile-link").getAttribute("href") });
+  document.body.append(pre);
+}, 2500);
+"""
 # The page in a frame of a phone's width (a headless window is never narrower than 500 px), and what
 # its rows look like there: their boxes, and how many lines the "Photo · On the site" line takes.
 NARROW_TEST = r"""
@@ -272,6 +282,7 @@ class Api:
     mode = "out"
     like_refusal = None  # (status, doc) POST /api/likes answers instead, when set
     mine_refusal = None  # (status, doc) GET /api/likes/mine answers in mode "in", when set
+    items = None  # what GET /api/me/items lists in mode "active" instead of ITEMS, when set
     calls = []
     posts = []
     deletes = 0
@@ -290,6 +301,8 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/auth/browser/v1/config"):
             return self.reply(200, json.dumps(CONFIG).encode(), "application/json")
         if self.path == "/api/me/items":
+            if Api.mode == "active" and Api.items is not None:
+                return self.reply(200, json.dumps({"items": Api.items, "counted": False}).encode(), "application/json")
             if Api.mode == "active":
                 items = dict(ITEMS, items=ITEMS["items"][1:] if Api.deletes > 1 else ITEMS["items"])
                 return self.reply(200, json.dumps(items).encode(), "application/json")
@@ -607,6 +620,30 @@ def main():
                   "Delete sends the item (after the confirm)")
             check("is deleted" in (r.get("message") or "") and len(r.get("after") or []) == 4,
                   "a delete that worked says so and the list follows")
+
+            print("-- My items: only videos")
+            v_mine, v_owner = "VIDEOGGGGGGG", "1234567890ab"  # the owner only the videos data has
+            (site / "data" / "videos.json").write_text(json.dumps({"version": 1, "generated": 0, "videos": [
+                {"id": v_mine, "title": "Clip 3", "gamertag": "DriverA", "owner": v_owner, "likes": 1,
+                 "src": f"videos/{v_mine}.mp4", "poster": f"videos/{v_mine}.jpg", "w": 1280, "h": 720,
+                 "seconds": 15, "date": 0}]}))
+            (site / "profile-test.js").write_text(PROFILE_TEST)
+            page = (site / "account.html").read_text(encoding="utf-8")
+            page = page.replace('<script src="account.js"></script>',
+                                '<script src="likes-setup.js"></script>\n<script src="account.js"></script>\n'
+                                '<script src="profile-test.js"></script>')
+            (site / "profile-test.html").write_text(page, encoding="utf-8")
+            Api.items = [{"kind": "video", "id": v_mine, "title": "Clip 3", "state": "live", "public": True,
+                          "likes": 1, "created": 3}]
+            r = results_of(browser, base + "/profile-test.html", profile) or {}
+            check(r.get("rows") == 1 and r.get("profile") == f"profile.html?p={v_owner}",
+                  f"a player whose only item on the site is a video gets the link to their page ({r})")
+            Api.items[0] = dict(Api.items[0], id="VIDEOHHHHHHH")
+            r = results_of(browser, base + "/profile-test.html", profile) or {}
+            check(r.get("rows") == 1 and r.get("profile") is None,
+                  f"and no link while the site's data does not have the video yet ({r})")
+            Api.items = None
+            (site / "data" / "videos.json").unlink()
 
             print("-- My items on a phone")
             page = (site / "account.html").read_text(encoding="utf-8")
