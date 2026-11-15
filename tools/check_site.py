@@ -17,6 +17,10 @@ and posters without metadata.
 When Photo of the Month was (tools/build_potm.py), data/photo-of-the-month.json: only the fields
 the pages show, months and ids that are months and ids, counts that are counts, and every photo
 it names one that data/gallery.json lists, with the same files.
+Photo of the Month is wholly on or wholly off (tools/potm_switch.py): its navbar and footer links,
+sitemap entries, noindex, switched elements and the home page's winner section all in the same
+state, never half, and none of them written in another form than the switch's own; while it is off,
+no page but its own two links to it outside what the switch hides.
   tools/check_site.py OUT"""
 import html.parser
 import json
@@ -25,6 +29,8 @@ import sys
 import zlib
 from pathlib import Path
 from urllib.parse import urlsplit
+
+import potm_switch
 
 GALLERY_KEYS = {"id", "title", "gamertag", "owner", "likes", "car", "location", "src", "w", "h", "thumb", "tw",
                 "th"}
@@ -38,8 +44,9 @@ MP4_TOP = {b"ftyp", b"moov", b"mdat", b"free", b"skip", b"wide"}
 MP4_BRANDS = {b"isom", b"iso2", b"iso4", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1"}
 # Pages that are not in the navbar: no link in it is the current page. online.html (how to play
 # online) is reached from the landing page, the FAQ and the footer, the Photo of the Month rules
-# from that event's page. Photo of the Month itself is hidden until the contest runs (README.md).
-NOT_IN_NAV = {"profile.html", "online.html", "photo-of-the-month.html", "photo-of-the-month-rules.html"}
+# from that event's page. Photo of the Month itself is in the navbar only while it is switched on
+# (tools/potm_switch.py, README.md).
+NOT_IN_NAV = {"profile.html", "online.html", "photo-of-the-month-rules.html"}
 PREVIEW_WIDTH, PREVIEW_MAX_SIDE = 576, 1024
 MAX_TIME = 10 ** 11  # unix seconds
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
@@ -572,6 +579,23 @@ def main():
         bad.append("profile.html: needs <meta name=\"robots\" content=\"noindex\">")
     if "https://forza.dyotson.dev/profile.html" in sm:
         bad.append("sitemap.xml: profile.html is not for search engines")
+    # Photo of the Month: wholly on or wholly off (tools/potm_switch.py), never half.
+    potm_state, problems = potm_switch.site_state(root)
+    bad += [f"Photo of the Month: {p}" for p in problems]
+    # Off: nothing of it shown or linked outside its own two pages, whatever
+    # data/photo-of-the-month.json says (the home page's winner section included). Also checked on a
+    # site half switched but mostly off, the way it is most likely meant.
+    parts, _ = potm_switch.parts_of(root)
+    on_parts = sum(state == "on" for _, _, state in parts)
+    if potm_state == "off" or (potm_state is None and on_parts <= len(parts) - on_parts):
+        for page in sorted(root.glob("*.html")):
+            if page.name in (potm_switch.PAGE, potm_switch.RULES):
+                continue
+            shown = potm_switch.shown_links(page.read_text(encoding="utf-8"))
+            if shown:
+                bad.append(f"{page.name}: links to Photo of the Month while it is off, outside what the switch hides "
+                           f"(data-potm-switch hidden, data-potm-off): {', '.join(sorted(set(shown)))}")
+    not_in_nav = NOT_IN_NAV | (set() if potm_state == "on" else {potm_switch.PAGE})
     # The same navbar on every page. aria-current="page" is the only difference.
     navs = {}
     for page in sorted(root.glob("*.html")):
@@ -589,9 +613,9 @@ def main():
             continue
         nav = re.sub(r'\s*aria-current="page"', "", found.group(0))
         navs.setdefault(nav, []).append(page.name)
-        if 'aria-current="page"' not in found.group(0) and page.name not in NOT_IN_NAV:
+        if 'aria-current="page"' not in found.group(0) and page.name not in not_in_nav:
             bad.append(f"{page.name}: mark the current page with aria-current")
-        if 'aria-current="page"' in found.group(0) and page.name in NOT_IN_NAV:
+        if 'aria-current="page"' in found.group(0) and page.name in not_in_nav:
             bad.append(f"{page.name}: is not in the navbar, so no link there is the current page")
     if len(navs) > 1:
         bad.append("navbar markup differs across pages: " +

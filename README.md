@@ -31,7 +31,7 @@ Plain HTML, CSS and JavaScript, no build step. The repository root is the site:
 | `images/` | screenshots; the logo (`logo-original.png`, and made from it: `logo-mark.webp`/`.png` for the navbar, the landing page and the footer, `logo.png` and `logo.svg` square, `favicon-32.png`, `apple-touch-icon.png`); the social preview (drawn from the logo and plain text, no game assets); the map (`colorado-map.svg`) |
 | `data/map_points.json` | the map's pins: the place and in-game name of every speed trap, speed zone and Rivals event |
 | `robots.txt`, `sitemap.xml` | for search engines |
-| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py`, `build_designs.py`, `build_videos.py`, `build_hub.py` and `build_potm.py` and their tests `test_build_gallery.py`, `test_build_designs.py`, `test_build_videos.py`, `test_build_hub.py` and `test_build_potm.py`, `test_account_page.py`, and `test_live_community.py` (not published), plus `site_hook.py` and `build_community.sh` for a self-hosted builder |
+| `tools/` | `assemble.sh` (what gets published), `preview_site.sh`, `check_site.py`, `build_gallery.py`, `build_designs.py`, `build_videos.py`, `build_hub.py` and `build_potm.py` and their tests `test_build_gallery.py`, `test_build_designs.py`, `test_build_videos.py`, `test_build_hub.py` and `test_build_potm.py`, `potm_switch.py` (Photo of the Month on or off) and `test_potm_switch.py`, `test_account_page.py`, and `test_live_community.py` (not published), plus `site_hook.py` and `build_community.sh` for a self-hosted builder |
 
 ## Preview
 
@@ -105,8 +105,6 @@ sitemap entries. It makes each download address itself, from the service's downl
 https origin that is not this site) and the item's SHA-256 and folder. While the hub is off
 (HTTP 404) the file says `"on": false` and no page is made.
 
-**Photo of the Month is hidden until the contest runs**: to show it again, put back its links in every page's navbar (Community) and footer, its two `sitemap.xml` entries, and drop the `noindex` from `photo-of-the-month.html` and `photo-of-the-month-rules.html` (and `photo-of-the-month.html` from `NOT_IN_NAV` in `tools/check_site.py`); the home page's section shows itself once there is a winner.
-
 Photo of the Month comes from the accounts service too: `tools/build_potm.py` (after the
 gallery) reads its public `/api/potm/winners` and `/api/potm/standings` (this month and the month
 before) from the repository variable `POTM_URL`, or else from `LIKES_URL`'s site, and writes
@@ -130,6 +128,44 @@ The map and its pins are built from a copy of the game in the game's repository
 (`tools/build_map_roads.py`, `tools/extract_map_points.py`, described in forza-live's
 [`docs/hosting.md`](https://github.com/FH1-ReImagined/forza-live/blob/main/docs/hosting.md))
 and committed here; nothing of the game is in this repository.
+
+## Switching Photo of the Month on and off
+
+Photo of the Month is switched off until the contest runs. One command switches the whole site:
+
+    tools/potm_switch.py status   # on or off; or what is half switched (exit 1)
+    tools/potm_switch.py on
+    tools/potm_switch.py off
+
+| | Off | On |
+|---|---|---|
+| Navbar (Community) and footer of every page | no link | "Photo of the Month" right after Photos; the current page on its own page |
+| `sitemap.xml` | neither page | both pages, after the gallery |
+| `photo-of-the-month.html`, `photo-of-the-month-rules.html` | `noindex` | indexed |
+| Elements marked `data-potm-switch` | hidden | shown |
+| The home page's winner section (`data-potm-featured`) | marked `data-potm-off`: hidden, even with a winner | shown once there is a winner |
+
+Off means nothing of the contest is shown or linked outside its own two pages. The marked elements
+are the announcement (on the home page and the contest page) and the winner's credit (in the home
+page's winner section and the rules). The winner section, with its "Vote this month" link, stays
+hidden while the contest is off even when `data/photo-of-the-month.json` has a winner. The hub's
+item pages copy the navbar of `mods.html`, so they follow.
+
+Switching on and then off again gives back the same files, byte for byte; switching to the state
+the site is already in changes nothing; a half switched site is finished in the state asked for. A
+page that has lost the line the switch writes next to (its Photos link, its canonical link) stops
+the switch before it writes anything, and so does a link, a `noindex` or a mark written in another
+form than the switch's own (other attributes, spacing or case). `tools/check_site.py` refuses a site
+that is half switched or has such a part, refuses an off site where any other page still links to
+the contest outside what the switch hides, and keeps `photo-of-the-month.html` out of the navbar
+check while the contest is off.
+`tools/test_potm_switch.py` tests all of this on a copy of the site.
+
+Before switching on, the text still to be decided has to be written. It is marked
+`class="potm-placeholder"`, and `status` and `on` list it: whether there is a prize (the rules
+page), the announcement and how the winner is credited. Each placeholder only says "To be
+announced" and that it is not decided yet: no prize, no dates, no title for the winner. Switch on
+and write it in the same pull request.
 
 ## History
 
