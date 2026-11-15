@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check an assembled site (tools/assemble.sh OUT): every local href/src of every page names a
+"""Check an assembled site (tools/assemble.sh OUT): every local href/src/srcset of every page names a
 file that is there, and the JSON data files parse. When the community photos were built into it
 (tools/build_gallery.py), also data/gallery.json: only the fields the pages show (never a "xuid";
 an "owner" only as the server's 12-hex-digit player id, and "likes" only as a count), every listed
@@ -16,6 +16,8 @@ When the community videos were (tools/build_videos.py), data/videos.json: only t
 pages show, every listed video and poster there and no unlisted one, MP4s of the boxes the
 server's converter writes (an ISO brand, one moov with an H.264 track, mdat and padding only),
 and posters without metadata.
+The lists the scripts fill start aria-busy (the page keeps room for them), and every picture of
+the pages over 100 KB has a srcset of smaller copies.
 When Photo of the Month was (tools/build_potm.py), data/photo-of-the-month.json: only the fields
 the pages show, months and ids that are months and ids, counts that are counts, and every photo
 it names one that data/gallery.json lists, with the same files.
@@ -722,7 +724,8 @@ def main():
     bad = []
     for page in sorted(root.glob("*.html")):
         text = page.read_text(encoding="utf-8")
-        for ref in re.findall(r'(?:href|src|data-full)="([^"]+)"', text):
+        srcsets = [c.split()[0] for v in re.findall(r'srcset="([^"]+)"', text) for c in v.split(",") if c.strip()]
+        for ref in re.findall(r'(?:href|src|data-full)="([^"]+)"', text) + srcsets:
             u = urlsplit(ref)
             if u.scheme or ref.startswith(("#", "//", "mailto:")):
                 continue
@@ -763,6 +766,24 @@ def main():
     m = re.search(r'<section\b[^>]*\bid="designs"[^>]*>', online)
     if not m or not re.search(r"\shidden[\s=>]", m.group(0)):
         bad.append('online.html: <section id="designs"> must start hidden')
+    # The lists the scripts fill start aria-busy: style.css keeps room for them until they are drawn,
+    # so the page does not jump when they come in (photos.js and designs.js take it off).
+    for name, marks in (("gallery.html", ["data-photos-live"]), ("online.html", ['data-designs="3"']),
+                        ("designs.html", ['data-designs-type="livery"', 'data-designs-type="vinylgroup"']),
+                        ("profile.html", ["data-photos-owner", "data-designs-owner"])):
+        page = (root / name).read_text(encoding="utf-8") if (root / name).is_file() else ""
+        for mark in marks:
+            m = re.search(r"<ul\b[^>]*" + re.escape(mark) + r"[^>]*>", page)
+            if not m or 'aria-busy="true"' not in m.group(0):
+                bad.append(f"{name}: the list with {mark} must start aria-busy=\"true\"")
+    # A big picture comes with smaller copies (srcset), so a phone or a small card does not load the
+    # full size: every <img> of the pages' own pictures over 100 KB has a srcset whose files are there.
+    for page in sorted(root.glob("*.html")):
+        for tag in re.findall(r"<img\b[^>]*>", page.read_text(encoding="utf-8")):
+            src = re.search(r'\ssrc="(images/[^"]+)"', tag)
+            if src and (root / src.group(1)).is_file() and (root / src.group(1)).stat().st_size > 100 * 1024 \
+                    and "srcset=" not in tag:
+                bad.append(f"{page.name}: {src.group(1)} is over 100 KB: give it a srcset with smaller copies")
     for token in ("features.html#mountains", "features.html#extras", "features.html#numbers",
                   "download.html#highway", "download.html#finish", "online.html#online"):
         if token not in index:

@@ -3,7 +3,8 @@
 // standings of this month and the month before, each photo with the files the gallery published.
 // - The home page (an element with data-potm-featured) shows the featured winner from that file
 //   only: it never calls the accounts service. While the contest is switched off
-//   (tools/potm_switch.py) the element is also marked data-potm-off and stays hidden, winner or not.
+//   (tools/potm_switch.py) the element is also marked data-potm-off and stays hidden, winner or not,
+//   and the home page does not ask for the file.
 // - photo-of-the-month.html (#potm-board) shows this month's standings, live: it asks the public
 //   /api/potm/standings (no cookie is sent) when the page opens and every minute while it is
 //   visible, and keeps the built copy when that fails (a copy of the site without /api/). Then
@@ -19,7 +20,10 @@
   var featured = document.querySelectorAll("[data-potm-featured]");
   var days = document.querySelectorAll("[data-potm-days]");
   var froms = document.querySelectorAll("[data-potm-from]");
-  if (!board && !featured.length && !days.length && !froms.length) return;
+  // A winner section switched off (data-potm-off) stays hidden whatever the file says: a page with
+  // nothing else to fill does not ask for the file at all.
+  var shown = Array.prototype.filter.call(featured, function (f) { return !f.hasAttribute("data-potm-off"); });
+  if (!board && !shown.length && !days.length && !froms.length) return;
 
   var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
                 "October", "November", "December"];

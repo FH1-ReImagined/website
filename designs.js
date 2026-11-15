@@ -129,6 +129,7 @@
       var shown = type ? mine.filter(function (d) { return matches(d, q); }).sort(order)
         : mine.sort(SORTS.newest).slice(0, n > 0 ? n : mine.length);
       list.replaceChildren.apply(list, shown.map(function (d) { return card(d, !type); }));
+      list.setAttribute("aria-busy", "false");
       var section = list.closest("[data-designs-section]");
       if (section) {
         section.hidden = !shown.length;
@@ -250,6 +251,8 @@
 
   // designs.html (data-designs-live) merges the server's live feed into the build's (live.js), so
   // a design shows as soon as it is screened and goes as soon as it is hidden.
+  // aria-busy until the list is drawn (style.css keeps room for it meanwhile, so nothing jumps)
+  lists.forEach(function (list) { list.setAttribute("aria-busy", "true"); });
   var fromFeed = !!document.querySelector("[data-designs-live]") && window.FHLive;
   fetch("data/designs.json", { cache: "no-cache" })
     .then(function (r) {
@@ -262,6 +265,8 @@
     .catch(function () { failed = true; })
     .then(function () {
       if (!fromFeed) return;
+      // the build has none: no room kept while the feed is asked (it most likely has none either)
+      if (!failed && !designs.length) lists.forEach(function (list) { list.setAttribute("aria-busy", "false"); });
       return window.FHLive.merge("design", designs).then(function (merged) {
         if (merged !== designs) { designs = merged; failed = false; }
       });
