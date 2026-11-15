@@ -8,11 +8,17 @@
 // Each card has its likes (likes.js), and the creator's gamertag links to their profile page
 // (profile.html?p=<owner>, the player id the server publishes). A list with data-designs-owner (the
 // profile page) shows only the designs of the player its address names, newest first.
+// Each design the build has also has a page of its own, designs/<id>.html (tools/build_designs.py
+// writes it, escaped, with its like slot and copy button in the markup): a card's title links to it,
+// and the whole card does. A design only the live feed lists yet (live.js) has no page until the
+// next build, so its card links nowhere. On a design's page (data-design-page) this script only
+// fills the like slot and works the copy button.
 (function () {
   "use strict";
 
   var lists = Array.prototype.slice.call(document.querySelectorAll("[data-designs]"));
-  if (!lists.length) return;
+  var designPage = document.querySelector("[data-design-page]");
+  if (!lists.length && !designPage) return;
   var KIND = { livery: "Paint job", vinylgroup: "Vinyl group" };
   var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"][aria-controls]'));
   var sortBy = document.getElementById("design-sort");
@@ -62,7 +68,13 @@
     img.alt = KIND[d.type] + (title ? " \u201c" + title + "\u201d" : "") + " by " + tag + (car ? ", for the " + car : "");
     var body = el("div", "", "design-body");
     if (withKind) body.append(el("span", KIND[d.type], "design-kind"));
-    body.append(el("b", title || "Untitled", "design-title"));
+    var name = el("b", d.live ? title || "Untitled" : "", "design-title");
+    if (!d.live) {
+      var link = el("a", title || "Untitled");
+      link.href = "designs/" + d.id + ".html";
+      name.append(link);
+    }
+    body.append(name);
     if (car) body.append(el("span", car, "design-car"));
     var by = el("span", "by ", "design-by");
     if (owner(d)) {
@@ -230,6 +242,11 @@
       flash(b, "Selected", "Share code " + code + " selected: copy it with your keyboard.");
     });
   });
+
+  if (designPage) {
+    if (window.FHLikes) window.FHLikes.fill(designPage);
+    return;
+  }
 
   // designs.html (data-designs-live) merges the server's live feed into the build's (live.js), so
   // a design shows as soon as it is screened and goes as soon as it is hidden.

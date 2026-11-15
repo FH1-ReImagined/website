@@ -898,6 +898,40 @@ button.like:disabled { opacity: .6; cursor: progress; }
   .design-stats { margin-bottom: 0; }
   .design-code { grid-column: 1 / -1; margin-top: 10px; }
 }
+/* A card links to its design's page: the title, and through it the whole card; the creator, the
+   like button and the share code stay above that link. */
+.design { position: relative; }
+.design-title a { color: inherit; text-decoration: none; }
+.design-title a::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.design-title a:hover, .design-title a:focus-visible { color: var(--orange); }
+.design-by a, .design-stats .like-slot, .design-code { position: relative; z-index: 2; }
+
+/* ---- a design's own page (designs/<id>.html, made by tools/build_designs.py) ---- */
+.design-item { width: min(100%, 1100px); }
+.design-item .kicker a { color: var(--orange); text-decoration: none; }
+.design-item .kicker a:hover { color: var(--cream); text-decoration: underline; }
+.design-item-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px 36px; align-items: start; margin: 6px 0 32px; }
+.design-item-pic {
+  margin: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: 0 14px 36px rgba(11, 7, 5, .35);
+  background: repeating-conic-gradient(rgba(255, 255, 255, .04) 0 25%, transparent 0 50%) 0 0 / 16px 16px, var(--surface-2);
+}
+.design-item-pic img { display: block; width: 100%; height: auto; }
+.design-nopic { display: grid; place-items: center; aspect-ratio: 9 / 5; color: var(--muted); font: 700 13px/1.2 var(--font-ui); letter-spacing: .16em; text-transform: uppercase; }
+.design-item h1 { display: block; color: var(--cream); margin: 0 0 12px; font-size: clamp(30px, 4vw, 48px); overflow-wrap: anywhere; }
+.design-item-car, .design-item-by { margin: 0 0 6px; color: var(--muted); font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.design-item-car b, .design-item-by b { color: var(--soft); }
+.design-item-by a { color: var(--soft); font-weight: 700; text-decoration: none; }
+.design-item-by a:hover { color: var(--orange); text-decoration: underline; }
+.design-item .design-stats { font-size: 14.5px; margin: 16px 0 20px; }
+.design-item .design-stats .like-slot { margin-left: 0; }
+.design-item .design-code { max-width: 440px; margin: 0; }
+.design-item .howto { width: min(100%, 660px); padding: 22px 24px; }
+.design-item-more { margin: 22px 0 6px; }
+.design-item > .aside { color: var(--muted); font-size: 14.5px; max-width: 660px; }
+@media (max-width: 760px) {
+  .design-item-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; margin-bottom: 24px; }
+  .design-item .howto { padding: 16px 18px; }
+}
 
 /* ---- Press kit and FAQ ---- */
 .press-page { max-width: 1000px; }

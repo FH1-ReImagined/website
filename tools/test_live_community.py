@@ -5,11 +5,13 @@
   one on PATH or Playwright's), against a stand-in for the site's /live/community/ route: the
   feed's order, the build's copy for an item the build has, the feed's picture route for one it
   has not, an item the feed no longer lists left out, malformed entries refused, player text as
-  text, and the build's data as before when there is no live feed;
+  text, and the build's data as before when there is no live feed; a design the build has links to
+  its page, one only the feed lists yet (no page until the next build) links nowhere;
 - tools/site_hook.py: a signed call runs the build command, a bad, stale or replayed signature
   and a bad body do not, and a burst of calls makes at most two builds;
 - tools/build_community.sh: it builds into a copy of the served release and switches the symlink,
-  leaves the served release untouched, builds Photo of the Month again after the photos (a
+  leaves the served release untouched (its sitemap too, which the designs build writes anew in
+  the copy), builds Photo of the Month again after the photos (a
   photo the gallery no longer has leaves it), and changes nothing when a feed or the accounts
   service cannot be read or the site is not served through a symlink.
 
@@ -179,6 +181,9 @@ def test_pages(tmp):
         srcs = {a.get("src") for t, a in d.tags if t == "img"}
         check(f"/live/community/design-img/{D2}.png" in srcs and f"designs/{D1}.png" in srcs,
               "designs: the feed's preview route for the new one, the build's file for the other")
+        links = [a.get("href") for t, a in d.tags if t == "a" and a.get("href", "").startswith("designs/")]
+        check(links == [f"designs/{D1}.html"] and "Fresh" in d.texts,
+              "designs: the build's design links to its page, the new one (no page yet) to nothing")
         Live.on = False
         d = dom_of(browser, base + "/gallery.html", tmp)
         shown = [a["data-full"] for t, a in d.tags if t == "button" and "data-full" in a]
@@ -273,6 +278,9 @@ def test_partial_build(tmp):
     (first / "data" / "photo-of-the-month.json").write_text(json.dumps(
         {"version": 1, "generated": 1, "from": "2026-10", "featured": old_winner, "winners": [old_winner], "months": []}))
     potm_before = (first / "data" / "photo-of-the-month.json").read_text()
+    stale = "  <url>\n    <loc>https://forza.dyotson.dev/designs/OLDDESIGN01.html</loc>\n  </url>\n"
+    sitemap = (first / "sitemap.xml").read_text().replace("</urlset>", stale + "</urlset>")
+    (first / "sitemap.xml").write_text(sitemap)
     (www / "current").symlink_to(first)
     served_before = (first / "data" / "gallery.json").read_text()
     env = dict(os.environ, SITE_LINK=str(www / "current"), RELEASES=str(www / "releases"), BUILD_LOCK=str(tmp / "lock"),
@@ -288,6 +296,9 @@ def test_partial_build(tmp):
     check((first / "data" / "gallery.json").read_text() == served_before and (first / "photos" / "OLDOLDOLDOLD.jpg").is_file(),
           "the release served before is untouched")
     check(os.path.samefile(now / "index.html", first / "index.html"), "unchanged files are shared with the release before")
+    check((first / "sitemap.xml").read_text() == sitemap and "OLDDESIGN01" not in (now / "sitemap.xml").read_text()
+          and (now / "sitemap.xml").read_text() == sitemap.replace(stale, ""),
+          "the designs build drops a design that left from the new release's sitemap, the served one untouched")
     check(json.loads((now / "data" / "gallery.json").read_text())["photos"] == [] and not (now / "photos" / "OLDOLDOLDOLD.jpg").exists(),
           "the photos are built again in the new release")
     check(json.loads((now / "data" / "videos.json").read_text())["videos"] == [] and (now / "videos").is_dir(),

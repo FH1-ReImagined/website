@@ -32,6 +32,11 @@
   };
   var states = {};
   var note = null, noteTimer = null;
+  // The site's root as seen from this page ("" on the pages at the top, "../" on mods/<id>.html and
+  // designs/<id>.html), from this script's own address, so the sign-in link finds the account page.
+  var script = document.currentScript;
+  var prefix = (script && script.getAttribute("src") || "").replace(/likes\.js(?:[?#].*)?$/, "");
+  var ROOT = /^(?:\.\.\/)*$/.test(prefix) ? prefix : "";
 
   // A refusal's text: the service's own sentence (message) as it is, else ours for its error, else
   // its error as it is. Shown with textContent only.
@@ -182,7 +187,7 @@
     if (n === null) return;  // no totals in this copy of the site
     var a = document.createElement("a");
     a.className = "like";
-    a.href = "account.html";
+    a.href = ROOT + "account.html";
     a.setAttribute("aria-label", label(n, kind) + ". Sign in and link your game to like");
     a.title = "Sign in and link your game to like";
     a.append(thumb(), document.createTextNode(n.toLocaleString("en")));
