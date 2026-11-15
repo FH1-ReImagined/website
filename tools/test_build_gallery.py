@@ -449,8 +449,11 @@ def check_pages(browser, site, order, expect, profile):
         mine = [i for i in order if expect["owners"].get(i) == OWNER_A]
         check(listed == [f"photos/{i}.jpg" for i in mine], "profile.html: only that player's photos, newest first")
         check("Synthetic One" in [x.strip() for x in prof.texts], "profile.html: their gamertag, from their newest photo")
-        check(any("2 photos" in x and "0 designs" in x and "15 likes" in x for x in prof.texts),
-              "profile.html: how many photos, designs and likes")
+        check(any("2 photos · 0 designs · 15 likes" in x for x in prof.texts),
+              "profile.html: how many photos, designs and likes (no video count for a player with none)")
+        sections = {a.get("id"): "hidden" not in a for t, a in prof.tags if t == "section"}
+        check(sections == {"profile-photos": True, "profile-videos": False, "profile-designs": False},
+              "profile.html: only the sections the player has something in (no Videos or Designs here)")
         check(not any(t == "a" and a.get("class") == "photo-by" for t, a in prof.tags),
               "profile.html: no link to the page it is on")
         prof = dom_of(browser, base + "/profile.html?p=XUID" + LEAK, profile)
