@@ -17,6 +17,14 @@ tab with the players' text as text, the copy button copies the share code (or se
 tabs switch by click, arrow key and address, the sort and the filter work, and online.html shows
 the 3 newest and hides its section when there are none; each card shows its like total and links
 the creator's gamertag to their page, and profile.html?p=<owner> lists that player's designs.
+Each design's own page (designs/<id>.html): one per published design and no other, the players' text
+escaped in the markup, its attributes and the structured data (a title that closes the script element
+cannot), its own title, description, canonical address and social preview, the creator linked only
+with a player id, the steps of its kind, the like total, a page without a picture, the sitemap's one
+entry per design (replaced on each build, the other entries kept, a file shared with another release
+left as it was), check_site.py refusing a stray, missing or tampered page; in the browser the card
+links to the page, the page links back, its like and Copy buttons work, and at a phone's width the
+page does not scroll sideways.
 
   python3 tools/test_build_designs.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_designs.py --serve 8000   # then serve the fixture site for a look
@@ -50,8 +58,8 @@ sys.path.insert(0, str(TOOLS))
 import build_designs  # noqa: E402
 import check_site  # noqa: E402
 from build_gallery import Refused  # noqa: E402
-from test_build_gallery import (LEAK, OWNER_A, OWNER_B, QuietFiles, assemble, browser_args, check, dom_of, failures,  # noqa: E402
-                                find_browser, free_port, jpeg_with_metadata, serve_dir)
+from test_build_gallery import (LEAK, OWNER_A, OWNER_B, Dom, QuietFiles, assemble, browser_args, check, dom_of,  # noqa: E402
+                                failures, find_browser, free_port, jpeg_with_metadata, serve_dir)
 from test_build_gallery import FeedHandler as _GalleryHandler  # noqa: E402
 
 NOW = int(time.time())
@@ -394,6 +402,140 @@ def check_published(site, liveries, vinyls, expect, log):
     check(mode(good["l1"]) == "RGB" and mode(good["v3"]) == "RGB", "an opaque preview is RGB")
 
 
+def parsed(text):
+    d = Dom()
+    d.feed(text)
+    return d
+
+
+def meta(page, key):
+    return next((a.get("content") for t, a in page.tags if t == "meta" and (a.get("property") == key or a.get("name") == key)), None)
+
+
+def ld_of(text):
+    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', text, re.S)
+    return json.loads(m.group(1)) if m else None
+
+
+def element_text(text, tag):
+    m = re.search(rf"<{tag}\b[^>]*>(.*?)</{tag}>", text, re.S)
+    return html.unescape(re.sub(r"<[^>]+>", "", m.group(1))) if m else None
+
+
+def site_entries(site):
+    return re.findall(r"<loc>([^<]+)</loc>", (site / "sitemap.xml").read_text(encoding="utf-8"))
+
+
+def check_design_pages(site, expect):
+    """designs/<id>.html for every published design, as tools/build_designs.py writes them."""
+    designs = published(site)["designs"]
+    by = {d["id"]: d for d in designs}
+    pages = sorted(f.stem for f in (site / "designs").glob("*.html"))
+    check(pages == sorted(by), f"one page per published design and no other ({len(pages)} pages, {len(by)} designs)")
+    good = expect["good"]
+    texts = {i: (site / "designs" / f"{i}.html").read_text(encoding="utf-8") for i in pages}
+    check(not any(check_site.markup_from_text(t) for t in texts.values()), "no page has markup from the players' text")
+    check(not any(LEAK in t or "xuid" in t.lower() for t in texts.values()), "no page names a XUID")
+
+    l1, l2, v1 = texts.get(good["l1"], ""), texts.get(good["l2"], ""), texts.get(good["v1"], "")
+    p1 = parsed(l1)
+    check(f'<link rel="canonical" href="https://forza.dyotson.dev/designs/{good["l1"]}.html">' in l1
+          and element_text(l1, "title") == "Sunset stripes by Synthetic One - Paint job - Forza Horizon 1: ReImagined",
+          "its own title and canonical address")
+    desc = meta(p1, "description") or ""
+    check("paint job for the Synthetic GT by Synthetic One" in desc and expect["entries"][good["l1"]]["code"] in desc
+          and meta(p1, "og:description") == desc, "its own description: the kind, the car, the creator and the share code")
+    check(meta(p1, "og:image") == f"https://forza.dyotson.dev/designs/{good['l1']}.png" and meta(p1, "og:image:width") == "288"
+          and meta(p1, "og:image:height") == "160" and meta(p1, "twitter:card") == "summary_large_image"
+          and meta(p1, "og:url") == f"https://forza.dyotson.dev/designs/{good['l1']}.html",
+          "its social preview is the design's picture, with its size")
+    check(element_text(l1, "h1") == "Sunset stripes" and "Synthetic GT" in p1.texts, "the name and the car")
+    imgs = [a for t, a in p1.tags if t == "img" and a.get("src") == f"{good['l1']}.png"]
+    check(len(imgs) == 1 and imgs[0].get("width") == "288" and imgs[0].get("height") == "160"
+          and "Sunset stripes" in imgs[0].get("alt", ""), "the picture, with its size and a text alternative")
+    check(any(t == "a" and a.get("href") == f"../profile.html?p={OWNER_A}" for t, a in p1.tags),
+          "the creator links to their player page")
+    iso = time.strftime("%Y-%m-%d", time.gmtime(expect["entries"][good["l1"]]["createdAt"]))
+    check(any(t == "time" and a.get("datetime") == iso for t, a in p1.tags), f"the day it was shared ({iso}, UTC)")
+    slots = [a for t, a in p1.tags if t == "span" and "like-slot" in a.get("class", "")]
+    want = str(expect["likes"][good["l1"]]) if expect.get("with_likes") else None
+    check(len(slots) == 1 and slots[0].get("data-kind") == "design" and slots[0].get("data-id") == good["l1"]
+          and slots[0].get("data-likes") == want, f"the like slot of the cards, with the total ({want})")
+    copy = [a for t, a in p1.tags if t == "button" and "copy" in a.get("class", "")]
+    check(len(copy) == 1 and copy[0].get("data-code") == expect["entries"][good["l1"]]["code"], "the share code's Copy button")
+    check("gamertag" in element_text(l1, "ol") and " text " in f" {element_text(v1, 'ol')} ",
+          "the steps of its kind: the gamertag field for a paint job, the text field for a vinyl group")
+    howto = (site / "designs.html").read_text(encoding="utf-8")
+    check(element_text(l1, "ol") in html.unescape(re.sub(r"<[^>]+>", "", howto)), "in the words designs.html uses")
+    check(any(t == "a" and a.get("href") == f"../designs.html#design-{good['l1']}" for t, a in p1.tags),
+          "the page links back to its card on designs.html")
+    check(any(t == "link" and a.get("href") == "../style.css" for t, a in p1.tags)
+          and not any(t == "a" and a.get("aria-current") for t, a in p1.tags), "addresses one folder up, no current page in the navbar")
+    ld = ld_of(l1) or {}
+    check(ld.get("name") == "Sunset stripes" and ld.get("creator", {}).get("name") == "Synthetic One"
+          and ld.get("dateCreated") == iso and ld.get("image", "").endswith(f"/designs/{good['l1']}.png"),
+          "structured data: the name, the creator, the day and the picture")
+
+    p2 = parsed(l2)
+    check(element_text(l2, "h1") == expect["markup"] and "&lt;img src=x onerror=" in l2
+          and not any(t == "img" and "onerror" in a for t, a in p2.tags) and not any(t == "i" for t, a in p2.tags),
+          "a title of markup is text, escaped")
+    check("<b>Tag</b>" in p2.texts and "Synthetic Roadster <i>" in p2.texts, "a gamertag and a car of markup too")
+    check(element_text(l2, "title").startswith(expect["markup"] + " by <b>Tag</b>")
+          and expect["markup"] in (meta(p2, "og:title") or ""), "and in the title and the attributes")
+    check((ld_of(l2) or {}).get("name") == expect["markup"] and "<img" not in re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', l2, re.S).group(1), "and in the structured data, with no <")
+    check(not any(t == "a" and a.get("href", "").startswith("../profile.html") for t, a in p2.tags) and
+          "owner" not in by[good["l2"]], "a creator without a player id: no link (the XUID the feed sent is not one)")
+    check("A car a vinyl group does not keep" not in v1 and "For the" not in texts.get(good["l3"], "x"),
+          "no car for a vinyl group, or when the feed has none")
+    l5 = parsed(texts.get(good["l5"], ""))
+    check(element_text(texts.get(good["l5"], ""), "h1") == "Untitled paint job" and "No ratings yet" in l5.texts,
+          "an untitled design and one nobody rated")
+
+
+def check_page_unit():
+    """design_page() on its own: text that tries to leave its place, a design without a picture."""
+    template = build_designs.template_of(TOOLS.parent / "designs.html")
+    hostile = {"id": "HOSTILE1", "type": "livery", "code": "ABC123", "gamertag": "Dr \"Quote\" O'Hara & Co",
+               "title": "</script><script>alert(1)</script><!-- \u2028", "car": "Car</b><img src=x onerror=alert(1)>",
+               "owner": OWNER_A, "downloads": 1, "rating": 0, "ratings": 0, "createdAt": NOW,
+               "src": "designs/HOSTILE1.png", "w": 288, "h": 160}
+    text = build_designs.design_page(template, hostile)
+    page = parsed(text)
+    block = re.search(r'<script type="application/ld\+json">(.*?)</script>', text, re.S)
+    check(not check_site.markup_from_text(text) and text.count("<script") == 5,
+          "a title that closes the script element opens no script (the 2 in the head, the 3 of the site)")
+    check(block is not None and not re.search(r"[<>&\u2028]", block.group(1)) and
+          json.loads(block.group(1)).get("name") == hostile["title"], "the structured data holds it as text: no <, > or &")
+    check(element_text(text, "h1") == hostile["title"] and element_text(text, "title").startswith(hostile["title"]),
+          "the heading and the title show it as written")
+    check(meta(page, "og:title").startswith(hostile["title"] + " by " + hostile["gamertag"])
+          and hostile["car"] in meta(page, "description"), "attributes keep quotes and markup as text")
+    check(not any(t == "img" and "onerror" in a for t, a in page.tags), "no element from the car's name")
+    bare = dict(hostile, id="NOPICTURE1", title="Bare")
+    for k in ("src", "w", "h", "owner"):
+        bare.pop(k)
+    text = build_designs.design_page(template, bare)
+    page = parsed(text)
+    check("No picture" in page.texts and not any(t == "img" and "NOPICTURE1" in a.get("src", "") for t, a in page.tags)
+          and meta(page, "og:image") == "https://forza.dyotson.dev/images/social-preview.png"
+          and meta(page, "twitter:card") == "summary" and "image" not in (ld_of(text) or {"image": 1}),
+          "a design without a picture: a placeholder, and the site's social preview")
+    check(not any(t == "a" and "profile.html" in a.get("href", "") for t, a in page.tags) and "Dr \"Quote\" O'Hara & Co" in page.texts,
+          "a creator without a page: the gamertag as plain text")
+
+
+def check_sitemap(site, before):
+    """One sitemap entry for each design's page; every entry the sitemap had besides is kept."""
+    ids = [d["id"] for d in published(site)["designs"]]
+    locs = site_entries(site)
+    mine = [u for u in locs if u.startswith("https://forza.dyotson.dev/designs/")]
+    check(sorted(mine) == sorted(f"https://forza.dyotson.dev/designs/{i}.html" for i in ids),
+          f"sitemap.xml: one entry for each design's page ({len(mine)} for {len(ids)} designs)")
+    check([u for u in locs if u not in mine] == before, "sitemap.xml: the other entries are kept, in their order")
+
+
 def check_tampering(site):
     """check_site.py fails on what the build must never publish."""
     data = site / "data" / "designs.json"
@@ -434,6 +576,33 @@ def check_tampering(site):
     stray.write_bytes(kept)
     fails("a preview designs.json does not list")
     stray.unlink()
+
+    page = site / "designs" / f"{first['id']}.html"
+    text = page.read_text(encoding="utf-8")
+    (site / "designs" / "STRAYSTRAY12.html").write_text(text, encoding="utf-8")
+    fails("a page for a design designs.json does not list")
+    (site / "designs" / "STRAYSTRAY12.html").unlink()
+    page.unlink()
+    fails("a listed design without its page")
+    page.write_text(text.replace("<h1>", '<h1><img src="x" onerror="alert(1)">', 1), encoding="utf-8")
+    fails("a page with markup in its text")
+    page.write_text(text.replace('"name":', '"name":"<b>",', 1), encoding="utf-8")
+    fails("a page whose structured data has markup")
+    page.write_text(text.replace('href="../designs.html#', 'href="../nowhere.html#', 1), encoding="utf-8")
+    fails("a page with a link to nothing")
+    page.write_text(text.replace("<h1>", "<h1>My xuid tribute ", 1), encoding="utf-8")
+    ok, out = check_site_ok(site)
+    check(ok, f"but passes a page whose player text says 'xuid' (a title must never stop a build) {'' if ok else out}")
+    page.write_text(text, encoding="utf-8")
+    sitemap = site / "sitemap.xml"
+    sm = sitemap.read_text(encoding="utf-8")
+    entry = f"  <url>\n    <loc>https://forza.dyotson.dev/designs/{first['id']}.html</loc>\n  </url>\n"
+    sitemap.write_text(sm.replace("</urlset>", entry + "</urlset>"), encoding="utf-8")
+    fails("a design listed twice in the sitemap")
+    sitemap.write_text(re.sub(r"\s*<url>\s*<loc>https://forza\.dyotson\.dev/designs/[^<]*</loc>.*?</url>", "", sm, count=1, flags=re.S),
+                       encoding="utf-8")
+    fails("a design missing from the sitemap")
+    sitemap.write_text(sm, encoding="utf-8")
 
     online = site / "online.html"
     page = online.read_text(encoding="utf-8")
@@ -518,6 +687,75 @@ HARNESS = r"""
 """
 
 
+PAGE_HARNESS = r"""
+(function () {
+  "use strict";
+  var copied = [];
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: function (t) { copied.push(t); return Promise.resolve(); } } });
+  setTimeout(function () {
+    var b = document.querySelector("button.copy");
+    b.click();
+    setTimeout(function () {
+      var like = document.querySelector(".like-slot .like");
+      var pre = document.createElement("pre");
+      pre.id = "test-results";
+      pre.textContent = JSON.stringify({ code: b.dataset.code, copied: copied, label: b.textContent,
+                                         like: like ? like.getAttribute("href") : null,
+                                         likeText: like ? like.textContent : null });
+      document.body.append(pre);
+    }, 300);
+  }, 500);
+})();
+"""
+
+CARD_HITS = r"""
+(function () {
+  "use strict";
+  // What a click on each part of the first card reaches: the picture and the rating go to the page
+  // (the title's link covers the card), the creator, the like and Copy stay their own.
+  document.addEventListener("designs:shown", function () {
+    setTimeout(function () {
+      var li = document.querySelector("#paint-jobs .designs > li");
+      function at(sel) {
+        var e = li.querySelector(sel);
+        e.scrollIntoView({ block: "center", behavior: "instant" });
+        var r = e.getBoundingClientRect();
+        var hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        var a = hit && hit.closest("a, button");
+        return a ? a.tagName.toLowerCase() + " " + (a.getAttribute("href") || a.className) : hit ? hit.tagName : "";
+      }
+      var pre = document.createElement("pre");
+      pre.id = "test-results";
+      pre.textContent = JSON.stringify({ img: at("img"), rating: at(".rating"), by: at(".design-by a"), like: at(".like"),
+                                         copy: at("button.copy"), title: at(".design-title a") });
+      document.body.append(pre);
+    }, 300);
+  });
+})();
+"""
+
+NARROW = r"""
+(function () {
+  var frames = Array.prototype.slice.call(document.querySelectorAll("iframe"));
+  setTimeout(function () {
+    var out = frames.map(function (frame) {
+      var d = frame.contentDocument, w = frame.contentWindow;
+      var boxes = Array.prototype.map.call(d.querySelectorAll(frame.dataset.boxes), function (e) {
+        var r = e.getBoundingClientRect();
+        return { l: Math.round(r.left), r: Math.round(r.right) };
+      });
+      return { page: frame.getAttribute("src"), width: w.innerWidth, scroll: d.documentElement.scrollWidth,
+               client: d.documentElement.clientWidth, boxes: boxes };
+    });
+    var pre = document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify(out);
+    document.body.append(pre);
+  }, 4000);
+})();
+"""
+
+
 def results_of(browser, url, profile):
     profile = Path(tempfile.mkdtemp(dir=profile))
     p = subprocess.run(browser_args(browser, profile) + ["--dump-dom", url], capture_output=True, text=True, timeout=120)
@@ -560,9 +798,62 @@ def check_pages(browser, site, liveries, vinyls, expect, profile):
         creators = {a.get("href") for t, a in page.tags if t == "a" and a.get("href", "").startswith("profile.html")}
         check(creators == {f"profile.html?p={OWNER_A}", f"profile.html?p={OWNER_B}"},
               "designs.html: the creators' gamertags link to their pages (only those with a player id)")
+        links = [a.get("href") for t, a in page.tags if t == "a" and re.fullmatch(r"designs/\w+\.html", a.get("href", ""))]
+        check(links == [f"designs/{i}.html" for i in liveries + vinyls], "designs.html: each card's title links to its page")
         prof = dom_of(browser, base + f"/profile.html?p={OWNER_A}", profile)
         listed = [a["id"][7:] for t, a in prof.tags if t == "li" and a.get("id", "").startswith("design-")]
         check(listed == [good["l1"], good["l3"]], "profile.html: only that player's designs, newest first")
+        check([a.get("href") for t, a in prof.tags if t == "a" and a.get("href", "").startswith("designs/")]
+              == [f"designs/{good['l1']}.html", f"designs/{good['l3']}.html"], "profile.html: and links to their pages")
+
+        own = dom_of(browser, base + f"/designs/{good['l1']}.html", profile)
+        likes = [a for t, a in own.tags if t == "a" and "like" in a.get("class", "").split()]
+        check(len(likes) == 1 and likes[0].get("href") == "../account.html" and likes[0].get("aria-label", "").startswith("7 likes"),
+              "a design's page: its like total, and the sign-in link finds the account page")
+        check(any(t == "img" and a.get("src") == f"{good['l1']}.png" for t, a in own.tags) and "Sunset stripes" in own.texts,
+              "a design's page: its picture and name in the browser")
+        page_text = (site / "designs" / f"{good['l1']}.html").read_text(encoding="utf-8")
+        (site / "designs" / "page-test.js").write_text(PAGE_HARNESS, encoding="utf-8")
+        (site / "designs" / "page-test.html").write_text(page_text.replace(
+            '<script src="../designs.js"></script>', '<script src="../designs.js"></script>\n<script src="page-test.js"></script>'),
+            encoding="utf-8")
+        r = results_of(browser, base + "/designs/page-test.html", profile) or {}
+        check(r.get("copied") == [entries[good["l1"]]["code"]] and r.get("label") == "Copied",
+              "a design's page: Copy puts the share code on the clipboard")
+        check(r.get("like") == "../account.html" and r.get("likeText") == "7", "and its like control is the cards' one")
+        (site / "designs" / "page-test.js").unlink()
+        (site / "designs" / "page-test.html").unlink()
+
+        (site / "cards-test.js").write_text(CARD_HITS, encoding="utf-8")
+        (site / "cards-test.html").write_text((site / "designs.html").read_text(encoding="utf-8").replace(
+            '<script src="designs.js"></script>', '<script src="designs.js"></script>\n<script src="cards-test.js"></script>'),
+            encoding="utf-8")
+        r = results_of(browser, base + "/cards-test.html", profile) or {}
+        to_page = f"a designs/{good['l1']}.html"
+        check(r.get("img") == to_page and r.get("title") == to_page and r.get("rating") == to_page,
+              f"a card: the picture, the title and the rest of the card open the design's page ({r})")
+        check(r.get("by") == f"a profile.html?p={OWNER_A}" and r.get("like") == "a account.html" and r.get("copy") == "button copy",
+              "a card: the creator, the like and Copy stay clickable above that link")
+        (site / "cards-test.js").unlink()
+        (site / "cards-test.html").unlink()
+
+        (site / "narrow-test.js").write_text(NARROW, encoding="utf-8")
+        (site / "narrow.html").write_text(
+            '<!doctype html><meta charset="utf-8"><body style="margin:0">'
+            f'<iframe src="designs/{good["l2"]}.html" data-boxes=".design-item-pic, .design-item h1, .design-code, .howto" width="390" height="2400" style="border:0"></iframe>'
+            f'<iframe src="designs/{good["l4"]}.html" data-boxes=".design-item-pic, .design-item h1, .design-code, .howto" width="360" height="2400" style="border:0"></iframe>'
+            '<iframe src="designs.html" data-boxes="#paint-jobs .design" width="390" height="2400" style="border:0"></iframe>'
+            '<script src="narrow-test.js"></script></body>', encoding="utf-8")
+        p = subprocess.run(browser_args(browser, Path(tempfile.mkdtemp(dir=profile))) + ["--dump-dom", base + "/narrow.html"],
+                           capture_output=True, text=True, timeout=120)
+        m = re.search(r'<pre id="test-results">(.*?)</pre>', p.stdout, re.S)
+        narrow = json.loads(html.unescape(m.group(1))) if m else []
+        check(len(narrow) == 3 and all(f["scroll"] <= f["client"] for f in narrow),
+              f"at a phone's width (390 and 360 px): no sideways scrolling ({[(f['page'], f['scroll'], f['client']) for f in narrow]})")
+        check(len(narrow) == 3 and all(f["boxes"] and all(b["l"] >= 12 and b["r"] <= f["width"] - 12 for b in f["boxes"]) for f in narrow),
+              f"and the picture, the name, the share code and the steps inside the page's margins ({narrow and [f['boxes'][:4] for f in narrow]})")
+        (site / "narrow-test.js").unlink()
+        (site / "narrow.html").unlink()
         check(any("0 photos" in x and "2 designs" in x and "8 likes" in x for x in prof.texts)
               and "Synthetic One" in [x.strip() for x in prof.texts],
               "profile.html: their gamertag and how many designs and likes")
@@ -654,6 +945,9 @@ def main():
     except Refused:
         check(True, "a URL that is not http(s) is refused")
 
+    print("-- a design's page on its own")
+    check_page_unit()
+
     entries, files, liveries, vinyls, expect = fixtures()
     feed = Feed()
     feed.doc["designs"], feed.files = entries, files
@@ -661,16 +955,26 @@ def main():
     try:
         site, cache = tmp / "site", tmp / "cache"
         assemble(site)
+        sitemap_before = site_entries(site)
+        shared = tmp / "sitemap-of-another-release.xml"
+        os.link(site / "sitemap.xml", shared)  # what tools/build_community.sh's copy of a release does
+        shared_text = shared.read_text(encoding="utf-8")
 
         print("-- a build with the fixture feed (GALLERY_FEED_URL names the photos feed)")
         feed.likes = expect["likes"]
         rc, log, outputs = build(site, cache, feed.url + "/community/gallery.json")
         check(rc == 0, "the build exits 0")
         check_published(site, liveries, vinyls, expect, log)
+        check_design_pages(site, expect)
+        check_sitemap(site, sitemap_before)
+        check(shared.read_text(encoding="utf-8") == shared_text and not os.path.samefile(shared, site / "sitemap.xml"),
+              "sitemap.xml is written anew: a release that shared the file keeps its own")
         expect["with_likes"] = True
         rc, log, _ = build(site, cache, feed.url + "/community/gallery.json", likes_url=feed.url)
         check(rc == 0, "with LIKES_URL: the build exits 0")
         check_published(site, liveries, vinyls, expect, log)
+        check_design_pages(site, expect)
+        check_sitemap(site, sitemap_before)
         feed.likes_status = 500
         rc, log, _ = build(site, cache, feed.url, "--require-feed", likes_url=feed.url)
         expect["with_likes"] = False
@@ -716,14 +1020,17 @@ def main():
         check("dropped over the cap of 4" in log and rest[4] in log, "the log names what the cap dropped")
         check(not (site / "designs" / f"{gone}.png").exists() and not list(cache.glob(f"{gone_sha}*")),
               "the withdrawn design is gone from the site and the cache")
-        check(sorted(f.name for f in (site / "designs").iterdir()) == sorted(f"{i}.png" for i in rest[:4]),
-              "designs/ holds only what is listed")
+        check(sorted(f.name for f in (site / "designs").iterdir()) == sorted(f"{i}.{x}" for i in rest[:4] for x in ("png", "html")),
+              "designs/ holds only what is listed, a picture and a page each")
+        check_sitemap(site, sitemap_before)
+        check(f"designs/{gone}.html" not in (site / "sitemap.xml").read_text(), "the withdrawn design leaves the sitemap")
 
         print("-- an empty feed")
         feed.doc["designs"] = []
         rc, log, _ = build(site, cache, feed.url)
-        check(rc == 0 and published(site)["designs"] == [] and not list((site / "designs").iterdir()), "no designs")
+        check(rc == 0 and published(site)["designs"] == [] and not list((site / "designs").iterdir()), "no designs, no pages")
         check(not list(cache.iterdir()), "and an empty cache")
+        check(site_entries(site) == sitemap_before, "and the sitemap as it was, without design entries")
         ok, out = check_site_ok(site)
         check(ok, "check_site.py passes with no designs")
 

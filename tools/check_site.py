@@ -7,8 +7,10 @@ photo there and no unlisted one, sizes within the limits, and JPEGs
 without metadata (no APP1-APP15 or COM segment, nothing after the end). When the community
 designs were (tools/build_designs.py), data/designs.json the same way: only the fields the pages
 show, every listed preview there and no unlisted one, and PNGs of pixels alone (IHDR, PLTE,
-tRNS, IDAT and IEND chunks, nothing after the end). When the mods and texture packs hub was
-(tools/build_hub.py), data/hub.json and the item pages mods/<id>.html: only the fields the pages
+tRNS, IDAT and IEND chunks, nothing after the end); one page designs/<id>.html for each listed
+design and no other, its local links there, no markup from player text, structured data that
+parses, and one sitemap entry for each page and none for a design that is not listed. When the mods
+and texture packs hub was (tools/build_hub.py), data/hub.json and the item pages mods/<id>.html: only the fields the pages
 show, downloads from the download host by SHA-256, one page per item, no markup from player text.
 When the community videos were (tools/build_videos.py), data/videos.json: only the fields the
 pages show, every listed video and poster there and no unlisted one, MP4s of the boxes the
@@ -316,13 +318,14 @@ def check_designs(root):
     bad = []
     if set(doc) - {"version", "generated", "designs"}:
         bad.append(f"data/designs.json: unexpected fields {sorted(set(doc) - {'version', 'generated', 'designs'})}")
-    listed, codes = set(), set()
+    listed, codes, ids = set(), set(), set()
     for i, d in enumerate(doc["designs"]):
         where = f"data/designs.json design {i}"
         if not isinstance(d, dict) or not re.fullmatch(r"[A-Za-z0-9]{6,32}", str(d.get("id"))):
             bad.append(f"{where}: no id")
             continue
         did = d["id"]
+        ids.add(did)
         if set(d) - DESIGN_KEYS:  # never a XUID, the design itself or its description
             bad.append(f"{where}: unexpected fields {sorted(set(d) - DESIGN_KEYS)}")
         bad += check_owner_and_likes(where, d)
@@ -351,9 +354,51 @@ def check_designs(root):
             bad.append(f"{where}: missing {d['src']}")
         else:
             bad += check_png(root / d["src"], d["w"], d["h"])
+    pages = {f"designs/{i}.html" for i in ids}
     if (root / "designs").is_dir():
         bad += [f"designs/{f.name}: not in data/designs.json"
-                for f in sorted((root / "designs").iterdir()) if f"designs/{f.name}" not in listed]
+                for f in sorted((root / "designs").iterdir()) if f"designs/{f.name}" not in listed | pages]
+    for rel in sorted(pages):
+        bad += design_page_problems(root, rel)
+    sm = (root / "sitemap.xml").read_text(encoding="utf-8") if (root / "sitemap.xml").is_file() else ""
+    in_sitemap = re.findall(r"<loc>https://forza\.dyotson\.dev/(designs/[^<]*)</loc>", sm)
+    if sorted(in_sitemap) != sorted(pages):
+        bad.append(f"sitemap.xml: the design pages listed {sorted(set(in_sitemap) ^ pages)[:5]} do not match "
+                   f"data/designs.json, or one is listed twice")
+    return bad
+
+
+def design_page_problems(root, rel):
+    """What is wrong with a design's page (tools/build_designs.py): missing, a local link to nothing,
+    markup or a script from player text, structured data that does not parse, no title, description,
+    canonical address or navbar."""
+    page = root / rel
+    if not page.is_file():
+        return [f"{rel}: missing (every listed design has a page)"]
+    text = page.read_text(encoding="utf-8")
+    bad = []
+    for ref in re.findall(r'(?:href|src)="([^"]+)"', text):
+        u = urlsplit(ref)
+        if u.scheme or ref.startswith(("#", "//", "mailto:")):
+            continue
+        if not (page.parent / u.path).resolve().is_file():
+            bad.append(f"{rel}: {ref}")
+    if markup_from_text(text):
+        bad.append(f"{rel}: markup from player text")
+    for block in re.findall(r'<script type="application/ld\+json">(.*?)</script>', text, re.S):
+        if re.search(r"[<>&]", block):
+            bad.append(f"{rel}: <, > or & in its structured data")
+        try:
+            json.loads(block)
+        except ValueError:
+            bad.append(f"{rel}: its structured data is not JSON")
+    canonical = f'<link rel="canonical" href="https://forza.dyotson.dev/{rel}">'
+    if canonical not in text or "<title>" not in text or 'name="description"' not in text:
+        bad.append(f"{rel}: needs its title, description and canonical URL")
+    # Not a search for "xuid" in the text: a title may say it, and a player's text must never stop
+    # the site from being published. The fields of data/designs.json are checked above.
+    if '<header class="topbar">' not in text or "Official links:" not in text:
+        bad.append(f"{rel}: needs the navbar and the footer")
     return bad
 
 
@@ -366,7 +411,7 @@ class _Tags(html.parser.HTMLParser):
     def handle_starttag(self, tag, attrs):
         if any(name.startswith("on") for name, _ in attrs) or tag in ("iframe", "object", "embed", "base", "form"):
             self.bad = True
-        if tag == "script":
+        if tag == "script" and dict(attrs).get("type") != "application/ld+json":  # structured data is not run
             self.scripts.append(dict(attrs).get("src"))
 
 

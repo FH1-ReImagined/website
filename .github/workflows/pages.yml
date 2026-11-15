@@ -16,8 +16,9 @@
 # (tools/build_videos.py: the MP4s checked box by box against their SHA-256, the posters re-encoded,
 # at most 100 videos and 700 MB, a cache of its own); a server without that feed gives no videos.
 # The paint jobs and vinyl groups players share come from the same server's
-# /community/designs.json (tools/build_designs.py, the same checks and a cache of its own); a
-# server without that feed gives no designs, and online.html hides its designs section.
+# /community/designs.json (tools/build_designs.py, the same checks and a cache of its own), each
+# with a page of its own (designs/<id>.html) and a sitemap entry; a server without that feed gives
+# no designs, and online.html hides its designs section.
 # Both builds add each item's like total from the website accounts service's public totals, the
 # repository variable LIKES_URL (https://forza.dyotson.dev/api/likes/counts; unset or unreachable:
 # no totals in that build, which goes on).

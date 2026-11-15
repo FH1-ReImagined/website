@@ -254,7 +254,8 @@ def check_pages(browser, site, profiles):
         check(any(t == "a" and a.get("href") == f"https://downloads.example/{SHA_A}/Better-title.zip" for t, a in item.tags),
               "the item page: its download")
         likes = [a for t, a in item.tags if t == "a" and "like" in a.get("class", "").split()]
-        check(len(likes) == 1 and likes[0].get("href") == "account.html", "the item page: its like total")
+        check(len(likes) == 1 and likes[0].get("href") == "../account.html",
+              "the item page: its like total, the sign-in link one folder up")
         check(any(t == "link" and a.get("href") == "../style.css" for t, a in item.tags), "the item page's addresses are one folder up")
 
         print("-- a visitor who signed in")

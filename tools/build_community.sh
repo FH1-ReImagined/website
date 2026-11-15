@@ -10,8 +10,9 @@
 # Photo of the Month is built again after the photos (tools/build_potm.py), since it names gallery
 # photos with their files: a photo deleted from the gallery leaves its standings too, and an
 # accounts service that cannot be read changes nothing.
-# The sitemap is left as the release has it: it lists the pages and the mods hub's items, never
-# photos or designs.
+# The sitemap keeps every entry the release has but the designs' pages, which build_designs.py writes
+# again for the designs it publishes (into a new file: the served release's copy is not touched). It
+# never lists photos or videos.
 #
 # Environment (the paths default to a builder that keeps the releases under /www):
 #   GALLERY_FEED_URL, LIKES_URL   as for the full build (both builders read them)

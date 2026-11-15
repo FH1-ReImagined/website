@@ -15,9 +15,19 @@ re-encoded as a PNG from its pixels alone, without any metadata: OUT/designs/<id
 576 px wide; the game's previews are 288x160 for paint jobs and 256x128 for vinyl groups, and a
 transparent background stays transparent). OUT/data/designs.json lists them, newest first, with
 only what the pages show (designs.js): never a XUID or the design itself, and no description.
-The pages insert the text with textContent, so nothing is escaped here. Each design keeps its
-creator's player id ("owner", as the photos do) and gets its like total ("likes") from
+The list pages insert the text with textContent, so nothing is escaped in the JSON. Each design keeps
+its creator's player id ("owner", as the photos do) and gets its like total ("likes") from
 LIKES_URL (?kind=design), as tools/build_gallery.py says.
+
+Each published design also gets a page of its own, OUT/designs/<id>.html, for search engines and for
+sharing: its picture, name, car, creator (linked to their player page), the day it was shared, its
+likes, its share code and how to get it in the game (the steps designs.html gives), with its own
+title, description, canonical address and social preview (the design's picture). The page is
+designs.html's navbar and footer around the design, and every player text in it is escaped
+(html.escape in the markup and its attributes; <, > and & written as JSON escapes in the
+structured data). OUT/sitemap.xml lists every design's page: the entries under /designs/ are replaced on
+each build (the file is written anew and renamed into place, so a release that shares its files
+with another, tools/build_community.sh, never changes the other's).
 
 The cache (DIR, kept between runs by actions/cache in .github/workflows/pages.yml) holds the
 re-encoded previews under the SHA-256 of the server's file, and a note for each file that failed
@@ -32,7 +42,9 @@ not an outage and still gives an empty list. A design that fails a check is left
 logged; it never fails the build.
 """
 import argparse
+import datetime
 import hashlib
+import html
 import io
 import json
 import math
@@ -42,13 +54,13 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 
 from PIL import Image
 
 # The download, the text cleaning and the cache bookkeeping are the photos' (it also sets
 # Pillow's pixel limit and turns its decompression-bomb warning into an error).
-from build_gallery import (Refused, Unreachable, clean_text, fetch, is_int, owner_of, prune_cache, read_likes,
+from build_gallery import (OWNER_RE, Refused, Unreachable, clean_text, fetch, is_int, owner_of, prune_cache, read_likes,
                            write_atomic)
 
 TYPES = ("livery", "vinylgroup")
@@ -241,6 +253,201 @@ def write_designs(out, designs):
     (data / "designs.json").write_text(text, encoding="utf-8")
 
 
+# ---- a page of its own for each design (designs/<id>.html) ----
+
+SITE = "https://forza.dyotson.dev"
+KIND = {"livery": "Paint job", "vinylgroup": "Vinyl group"}
+PANEL = {"livery": "paint-jobs", "vinylgroup": "vinyl-groups"}  # designs.html's tab of each kind
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December")
+JS_CLASS = '<script>document.documentElement.classList.add("js")</script>'
+
+
+def esc(v):
+    return html.escape(str(v), quote=True)
+
+
+def json_ld(doc):
+    """JSON for a <script type="application/ld+json">: no <, > or & as themselves, so no player text
+    can close the element or open a comment."""
+    text = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
+    return text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e") \
+        .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+
+
+def count_text(n, one, many):
+    return f"{n:,} {one if n == 1 else many}"
+
+
+def day_of(unix):
+    """(2026-11-14, 14 November 2026) in UTC."""
+    t = datetime.datetime.fromtimestamp(unix, datetime.timezone.utc)
+    return t.strftime("%Y-%m-%d"), f"{t.day} {MONTHS[t.month - 1]} {t.year}"
+
+
+def template_of(designs_html):
+    """The pieces of designs.html a design's page reuses, with every local address one folder up:
+    the scene, the navbar (no link in it is this page), the footer, and the steps of "How to get it
+    in the game" of each kind."""
+    text = designs_html.read_text(encoding="utf-8")
+
+    def up(chunk):
+        return re.sub(r'(href|src)="(?!https?:|#|//|mailto:)([^"]+)"', r'\1="../\2"', chunk)
+
+    def between(start, end, at=0):
+        i = text.index(start, at)
+        return text[i:text.index(end, i) + len(end)]
+    steps = {}
+    for kind, panel in PANEL.items():
+        at = text.index(f'id="{panel}"')
+        steps[kind] = up(between('<ol class="steps">', "</ol>", at))
+    header = up(between('<header class="topbar">', "</header>")).replace(' aria-current="page"', "")
+    return {"scene": up(text[text.index('<div class="scene"'):text.index('<header class="topbar">')]),
+            "header": header, "footer": up(between("<footer>", "</footer>")), "steps": steps}
+
+
+def rating_html(d):
+    if not d["ratings"]:
+        return '<span class="rating none">No ratings yet</span>'
+    r = f"{d['rating']:.1f}"
+    label = f"Rated {r} out of 5 by {count_text(d['ratings'], 'player', 'players')}"
+    return (f'<span class="rating" role="img" aria-label="{esc(label)}"><span class="rating-stars" style="--r:{esc(d["rating"])}">'
+            f'\u2605\u2605\u2605\u2605\u2605<span class="on">\u2605\u2605\u2605\u2605\u2605</span></span>'
+            f'<span>{esc(r)}</span><small>({d["ratings"]:,})</small></span>')
+
+
+def design_page(template, d):
+    """The page of one design (an entry of data/designs.json). Every text is escaped here: the
+    titles, gamertags and car names are the players' own."""
+    did, kind = d["id"], KIND[d["type"]]
+    title, tag = d.get("title") or "", d["gamertag"]
+    car = d.get("car") if d["type"] == "livery" else None
+    name = title or f"Untitled {kind.lower()}"
+    url = f"{SITE}/designs/{did}.html"
+    iso, day = day_of(d["createdAt"])
+    pic = d.get("src") == f"designs/{did}.png" and d.get("w") and d.get("h")
+    image = f"{SITE}/designs/{did}.png" if pic else f"{SITE}/images/social-preview.png"
+    page_title = f"{name} by {tag} - {kind} - Forza Horizon 1: ReImagined"
+    what = f"A {kind.lower()}" + (f" for the {car}" if car else "")
+    summary = (f"{what} by {tag} for Forza Horizon 1: ReImagined. "
+               f"Search for the share code {d['code']} in the game's storefront to get it, free.")
+    alt = kind + (f" \u201c{title}\u201d" if title else "") + f" by {tag}" + (f", for the {car}" if car else "")
+    owner = d.get("owner") if isinstance(d.get("owner"), str) and OWNER_RE.fullmatch(d["owner"]) else None
+    creator = (f'<a href="../profile.html?p={esc(quote(owner))}">{esc(tag)}</a>' if owner else f"<b>{esc(tag)}</b>")
+    likes = f' data-likes="{d["likes"]}"' if isinstance(d.get("likes"), int) else ""
+    back = f"../designs.html#design-{esc(quote(did))}"
+    ld = {"@context": "https://schema.org", "@type": "CreativeWork", "name": name, "url": url,
+          "genre": kind, "dateCreated": iso, "creator": {"@type": "Person", "name": tag},
+          "isPartOf": {"@type": "CollectionPage", "name": "Player designs", "url": f"{SITE}/designs.html"}}
+    if pic:
+        ld["image"] = image
+    if car:
+        ld["about"] = car
+    if owner:
+        ld["creator"]["url"] = f"{SITE}/profile.html?p={quote(owner)}"
+    social = [f'<meta property="og:image" content="{esc(image)}">']
+    if pic:
+        social += [f'<meta property="og:image:width" content="{d["w"]}">',
+                   f'<meta property="og:image:height" content="{d["h"]}">',
+                   f'<meta property="og:image:alt" content="{esc(alt)}">']
+    social.append(f'<meta name="twitter:card" content="{"summary_large_image" if pic else "summary"}">')
+    picture = (f'<img src="{esc(quote(did))}.png" width="{d["w"]}" height="{d["h"]}" alt="{esc(alt)}" decoding="async">'
+               if pic else '<span class="design-nopic">No picture</span>')
+    head = f'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{JS_CLASS}
+<title>{esc(page_title)}</title>
+<meta name="description" content="{esc(summary)}">
+<link rel="canonical" href="{esc(url)}">
+<meta name="theme-color" content="#1c140f">
+<meta property="og:title" content="{esc(name)} by {esc(tag)} - {esc(kind)}">
+<meta property="og:description" content="{esc(summary)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{esc(url)}">
+{chr(10).join(social)}
+<link rel="icon" href="../images/logo.svg" type="image/svg+xml">
+<link rel="icon" href="../images/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+<link rel="stylesheet" href="../style.css">
+<script type="application/ld+json">{json_ld(ld)}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the design</a>
+
+'''
+    body = f'''<main class="board-page design-page" id="main">
+  <article class="design-item" id="design-{esc(did)}" data-design-page="{esc(did)}">
+    <p class="kicker"><a href="{back}">Designs</a> &middot; {esc(kind)}</p>
+    <div class="design-item-grid">
+      <figure class="design-item-pic">{picture}</figure>
+      <div class="design-item-info">
+        <h1>{esc(name)}</h1>
+        {f'<p class="design-item-car">For the <b>{esc(car)}</b></p>' if car else ""}
+        <p class="design-item-by">by {creator} &middot; shared <time datetime="{iso}">{esc(day)}</time></p>
+        <p class="design-stats">{rating_html(d)}<span class="downloads">{esc(count_text(d["downloads"], "download", "downloads"))}</span><span class="like-slot" data-kind="design" data-id="{esc(did)}"{likes}></span></p>
+        <div class="design-code"><span class="k">Share code</span><code>{esc(d["code"])}</code><button type="button" class="copy" data-code="{esc(d["code"])}" aria-label="Copy the share code {esc(d["code"])}">Copy</button></div>
+      </div>
+    </div>
+    <aside class="panel howto" aria-labelledby="howto">
+      <h2 id="howto">How to get it in the game</h2>
+      {template["steps"][d["type"]]}
+    </aside>
+    <p class="design-item-more"><a class="link-more" href="{back}">All designs</a></p>
+    <p class="aside">Designs are made and shared by players and screened before they appear here. To have this one removed, <a href="https://github.com/FH1-ReImagined/website/issues/new?template=design-removal.yml">open an issue</a> or ask on the <a href="https://discord.gg/yu7zScdcWw">Discord</a>, with its share code.</p>
+  </article>
+</main>
+'''
+    scripts = '''
+<script src="../nav.js"></script>
+<script src="../likes.js"></script>
+<script src="../designs.js"></script>
+</body>
+</html>
+'''
+    return head + template["scene"] + template["header"] + "\n\n" + body + "\n" + template["footer"] + "\n" + scripts
+
+
+def write_pages(out, designs):
+    """designs/<id>.html for every design (the folder holds only this build's files: main() empties
+    it first)."""
+    if not designs:
+        return
+    src = out / "designs.html"
+    if not src.is_file():
+        warn("no designs.html in the site: no design pages")
+        return
+    template = template_of(src)
+    for d in designs:
+        (out / "designs" / f"{d['id']}.html").write_text(design_page(template, d), encoding="utf-8")
+
+
+SITEMAP_DESIGN = re.compile(r"[ \t]*<url>\s*<loc>" + re.escape(SITE) + r"/designs/[^<]*</loc>.*?</url>\n?", re.S)
+
+
+def write_sitemap(out, designs):
+    """OUT/sitemap.xml with one entry for each design's page, in place of the entries there were."""
+    path = out / "sitemap.xml"
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    kept = SITEMAP_DESIGN.sub("", text)
+    entries = "".join(f"  <url>\n    <loc>{esc(SITE + '/designs/' + quote(d['id']) + '.html')}</loc>\n"
+                      f"    <lastmod>{day_of(d['createdAt'])[0]}</lastmod>\n"
+                      f"    <changefreq>monthly</changefreq>\n    <priority>0.4</priority>\n  </url>\n" for d in designs)
+    new = kept.replace("</urlset>", entries + "</urlset>") if "</urlset>" in kept else kept
+    if new != text:
+        write_atomic(path, new.encode("utf-8"))
+
+
+def publish(out, designs):
+    write_designs(out, designs)
+    write_pages(out, designs)
+    write_sitemap(out, designs)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("out", type=Path, help="the assembled site (tools/assemble.sh OUT)")
@@ -259,13 +466,13 @@ def main():
     url = os.environ.get("GALLERY_FEED_URL", "").strip()
     if not url:
         log("GALLERY_FEED_URL is not set: no designs")
-        write_designs(args.out, [])
+        publish(args.out, [])
         return 0
     try:
         url = designs_url(url)
         raw = read_feed(url)
     except (Refused, Unreachable) as e:
-        write_designs(args.out, [])
+        publish(args.out, [])
         if getattr(e, "status", None) == 404:  # a server without the designs feed: not an outage
             warn(f"the server has no designs feed ({url}, HTTP 404): no designs")
             return 0
@@ -350,7 +557,7 @@ def main():
                  src=f"designs/{did}.png", w=w, h=h)
         designs.append(d)
 
-    write_designs(args.out, designs)
+    publish(args.out, designs)
     log(f"{len(designs)} designs published ({downloaded} downloaded, {cached} from the cache); "
         f"{refused} refused, {unreachable} not fetched, {len(dropped)} over the cap")
     if args.cache:
