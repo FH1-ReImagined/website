@@ -310,6 +310,7 @@
       var mine = onProfile ? photos.filter(function (p) { return wanted && owner(p) === wanted; }) : photos;
       var shown = n > 0 ? mine.slice(0, n) : mine;
       list.replaceChildren.apply(list, shown.map(function (p) { return item(p, onProfile); }));
+      list.setAttribute("aria-busy", "false");
       var section = list.closest("[data-photos-section]");
       if (section) {
         section.hidden = !shown.length;
@@ -328,6 +329,8 @@
 
   // A page that lists the photos as soon as they are approved (data-photos-live, gallery.html)
   // merges the server's live feed into the build's (live.js); without one it shows the build's.
+  // aria-busy until the list is drawn (style.css keeps room for it meanwhile, so nothing jumps)
+  lists.forEach(function (list) { list.setAttribute("aria-busy", "true"); });
   var fromFeed = !!document.querySelector("[data-photos-live]") && window.FHLive;
   fetch("data/gallery.json", { cache: "no-cache" })
     .then(function (r) {
@@ -338,6 +341,8 @@
           function () { return null; })
     .then(function (built) {
       if (!fromFeed) return built === null ? show([], true) : show(built, false);
+      // the build has none: no room kept while the feed is asked (it most likely has none either)
+      if (built && !built.length) lists.forEach(function (list) { list.setAttribute("aria-busy", "false"); });
       return window.FHLive.merge("photo", built || []).then(function (photos) {
         if (built === null && !photos.length) show([], true);
         else show(photos, false);

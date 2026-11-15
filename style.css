@@ -769,6 +769,13 @@ a.photo-by:hover { color: var(--orange); text-decoration: underline; }
 .shots.photos.all { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .photo-state, .design-state { color: var(--muted); margin: 10px 2px 0; }
 .photo-state.error, .design-state.error { color: #faede8; }
+/* While the photos or the designs load (aria-busy, in the page and taken off by photos.js and
+   designs.js) the "Loading..." line keeps a screen of room below it, and a player's page and the
+   Online page keep their footer below the fold: nothing jumps when the list comes in. (Not the
+   videos: while there are none, the room would only close again.) */
+.js [data-photos-live][aria-busy="true"] + .photo-state,
+.js [data-designs-type][aria-busy="true"] + .design-state { min-height: 100vh; }
+.js main:has([data-photos-owner][aria-busy="true"], [data-designs="3"][aria-busy="true"]) { min-height: 100vh; }
 
 /* ---- community videos (videos.js): the photos' cards, with a play button and the length ---- */
 .shots.videos li > button { cursor: pointer; }
