@@ -16,7 +16,8 @@ text, length, date, gamertag link (to the player's page, for an owner id only) a
 empty and error states, the player (a click opens it with the video, closing it drops the video),
 and at a phone's width one column and no sideways scrolling; profile.html?p=<owner> lists only that
 player's videos (poster, title linking to its card on videos.html, date, likes, the same player),
-plays them, fits a phone, and shows no videos section for a player who has none.
+counts only the videos it draws, plays them, fits a phone, and shows no videos section for a
+player who has none.
 
   python3 tools/test_build_videos.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_videos.py --serve 8000   # then serve the fixture site for a look
@@ -427,6 +428,27 @@ def check_pages(browser, site, order, expect, profile):
                                                             for t, a in prof.tags)
               and "no photos, videos or designs" in prof.text(),
               "profile.html: a player with no videos gets no Videos section")
+        # entries videos.js does not draw (a poster that is not the video's own, no length, no gamertag):
+        # the heading does not count them either
+        data = site / "data" / "videos.json"
+        built = data.read_text(encoding="utf-8")
+        doc = json.loads(built)
+        mine = next(v for v in doc["videos"] if v["id"] == order[0])
+        odd = [dict(mine, id=vid("odd-poster"), src=f"videos/{vid('odd-poster')}.mp4"),
+               dict(mine, id=vid("no-length"), src=f"videos/{vid('no-length')}.mp4",
+                    poster=f"videos/{vid('no-length')}.jpg", seconds=0),
+               dict(mine, id=vid("no-tag"), src=f"videos/{vid('no-tag')}.mp4", poster=f"videos/{vid('no-tag')}.jpg",
+                    gamertag="")]
+        alone = dict(odd[1], owner=nobody)  # a player whose only video is one not drawn
+        data.write_text(json.dumps(dict(doc, videos=odd + doc["videos"] + [alone])))
+        prof, _ = browser_run(browser, base + f"/profile.html?p={OWNER_A}", profile)
+        listed = [a["id"][6:] for t, a in prof.tags if t == "li" and a.get("id", "").startswith("video-")]
+        check(listed == [order[0]] and any("0 photos · 1 video · 0 designs · 7 likes" in x for x in prof.texts),
+              f"profile.html: a video that is not drawn is not counted either ({listed})")
+        prof, _ = browser_run(browser, base + f"/profile.html?p={nobody}", profile)
+        check(not prof.shown("profile-videos") and "no photos, videos or designs" in prof.text(),
+              "profile.html: a player whose only video is not drawn has nothing on the site")
+        data.write_text(built, encoding="utf-8")
         (site / "profile-player-test.html").write_text((site / "profile.html").read_text(encoding="utf-8").replace(
             '<script src="videos.js"></script>', '<script src="player-test.js"></script>\n<script src="videos.js"></script>'))
         for _ in range(3):

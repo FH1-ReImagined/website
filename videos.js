@@ -17,7 +17,6 @@
   "use strict";
 
   var lists = Array.prototype.slice.call(document.querySelectorAll("[data-videos]"));
-  if (!lists.length) return;
   var states = Array.prototype.slice.call(document.querySelectorAll("[data-videos-state]"));
   var box = document.getElementById("player");
 
@@ -36,6 +35,9 @@
       v.poster === "videos/" + v.id + ".jpg" && text(v.gamertag) && size(v.w) && size(v.h) &&
       typeof v.seconds === "number" && v.seconds > 0 && typeof v.date === "number";
   }
+  // profile.js counts a player's videos with this same check, so its heading counts what is drawn
+  window.FHVideos = { usable: usable };
+  if (!lists.length) return;
 
   // 0:15, 1:04
   function length(seconds) {

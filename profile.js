@@ -1,9 +1,10 @@
 // A player's page (profile.html?p=<owner>): their community photos, videos and shared designs, from
 // the site's own data/gallery.json, data/videos.json and data/designs.json (photos.js, videos.js and
 // designs.js draw the lists, filtered by the owner), and here the heading: the gamertag of their
-// newest item and how many photos, designs and likes they have (and videos, when they have any). All of it is already public on the site; the owner id is
-// the player id the game server publishes (a salted hash, never a XUID), and nothing here comes
-// from the accounts service. The gamertag is the player's own text: textContent only.
+// newest item and how many photos, designs and likes they have (and videos, when they have any:
+// only those videos.js draws, with its own check). All of it is already public on the site; the
+// owner id is the player id the game server publishes (a salted hash, never a XUID), and nothing
+// here comes from the accounts service. The gamertag is the player's own text: textContent only.
 (function () {
   "use strict";
 
@@ -16,13 +17,16 @@
     return;
   }
 
-  function list(path, field) {
+  // a video counts only if videos.js draws it (no videos.js: none is drawn)
+  var drawnVideo = window.FHVideos ? window.FHVideos.usable : function () { return false; };
+
+  function list(path, field, drawn) {
     return fetch(path, { cache: "no-cache" }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
     }).then(function (doc) {
       return doc && Array.isArray(doc[field]) ? doc[field].filter(function (i) {
-        return i && i.owner === wanted && typeof i.gamertag === "string" && i.gamertag;
+        return i && i.owner === wanted && typeof i.gamertag === "string" && i.gamertag && (!drawn || drawn(i));
       }) : [];
     }, function () { return null; });
   }
@@ -34,7 +38,7 @@
   }
 
   Promise.all([list("data/gallery.json", "photos"), list("data/designs.json", "designs"),
-               list("data/videos.json", "videos")]).then(function (r) {
+               list("data/videos.json", "videos", drawnVideo)]).then(function (r) {
     var photos = r[0] || [], designs = r[1] || [], videos = r[2] || [];
     if (r[0] === null && r[1] === null && r[2] === null) {
       summary.textContent = "This page could not be loaded. Try again later.";

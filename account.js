@@ -221,7 +221,7 @@
     }
   }
 
-  // ---- the game's photos and designs ----
+  // ---- the game's photos, videos and designs ----
 
   function thumbOf(item) {
     if (!item.public) return "";
@@ -243,10 +243,11 @@
           return hit ? hit.owner : null;
         }, function () { return null; });
     }
-    // not from the videos: the player's page shows no videos yet
-    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design")])
+    // the player's page shows their photos, videos and designs: any one of them gives the owner id
+    Promise.all([find("data/gallery.json", "photos", "photo"), find("data/designs.json", "designs", "design"),
+                 find("data/videos.json", "videos", "video")])
       .then(function (r) {
-        var owner = r[0] || r[1];
+        var owner = r[0] || r[1] || r[2];
         if (!owner) return;
         document.getElementById("items-profile-link").href = "profile.html?p=" + owner;
         p.hidden = false;
