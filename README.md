@@ -49,6 +49,10 @@ test and keep its site up (needs Pillow, `pip install -r tools/requirements.txt`
     tools/test_build_designs.py --serve 8000   # the same with synthetic designs
     tools/test_build_videos.py --serve 8000    # the same with synthetic videos (made-up MP4s: they do not play)
 
+`python3 tools/check_site.py OUT` checks an assembled copy (`tools/assemble.sh OUT`), as pull requests do;
+among the rest, each page's share preview tags (what a link pasted in a chat shows) and the sitemap
+against the pages.
+
 ## Publishing
 
 `.github/workflows/pages.yml` publishes the site on every push to `main` and every hour (at
