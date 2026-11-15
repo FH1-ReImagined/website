@@ -154,13 +154,20 @@ def template_of(mods_html):
 <title>{{TITLE}}</title>
 <meta name="description" content="{{DESCRIPTION}}">
 <link rel="canonical" href="{{CANONICAL}}">
-<meta name="theme-color" content="#140d2e">
+<meta name="theme-color" content="#1c140f">
 <meta property="og:title" content="{{TITLE}}">
 <meta property="og:description" content="{{DESCRIPTION}}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{CANONICAL}}">
 <meta property="og:image" content="{SITE}/images/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="The Forza Horizon 1: ReImagined logo beside the name and one line about the project">
+<meta property="og:site_name" content="Forza Horizon 1: ReImagined">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../images/logo.svg" type="image/svg+xml">
+<link rel="icon" href="../images/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
 <link rel="stylesheet" href="../style.css">
 </head>
 <body>

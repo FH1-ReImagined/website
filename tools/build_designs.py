@@ -367,6 +367,7 @@ def design_page(template, d):
 <meta property="og:description" content="{esc(summary)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{esc(url)}">
+<meta property="og:site_name" content="Forza Horizon 1: ReImagined">
 {chr(10).join(social)}
 <link rel="icon" href="../images/logo.svg" type="image/svg+xml">
 <link rel="icon" href="../images/favicon-32.png" sizes="32x32" type="image/png">

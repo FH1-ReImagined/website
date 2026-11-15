@@ -23,6 +23,10 @@ Photo of the Month is wholly on or wholly off (tools/potm_switch.py): its navbar
 sitemap entries, noindex, switched elements and the home page's winner section all in the same
 state, never half, and none of them written in another form than the switch's own; while it is off,
 no page but its own two links to it outside what the switch hides.
+Every page, a design's and a hub item's too, has what a share preview needs (og:title,
+og:description, og:url its canonical address, og:image a picture of the site that is there,
+og:site_name, twitter:card); the sitemap lists every page without noindex, under its canonical
+address, and nothing else.
   tools/check_site.py OUT"""
 import html.parser
 import json
@@ -368,6 +372,85 @@ def check_designs(root):
     return bad
 
 
+SITE = "https://forza.dyotson.dev"
+
+
+def _meta(text, key):
+    """The content of <meta property|name="key">, unescaped, or None."""
+    m = re.search(r'<meta (?:property|name)="' + re.escape(key) + r'" content="([^"]*)"', text)
+    return html.unescape(m.group(1)) if m else None
+
+
+def png_size(path):
+    data = path.read_bytes()[:24]
+    return (int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")) if data[:8] == PNG_SIG else None
+
+
+def share_problems(root, rel, text):
+    """What a link to the page pasted in a chat or a post would miss: a title, description, address
+    and picture for the preview (og:url the canonical address, og:image a picture of this site
+    that is there, with its real size when it says one), and twitter:card, which also makes Discord
+    show the picture large."""
+    bad = []
+    for key in ("og:title", "og:description", "og:type", "og:url", "og:image", "og:site_name", "twitter:card"):
+        if not _meta(text, key):
+            bad.append(f"{rel}: needs <meta {key}> for its share preview")
+    canonical = re.search(r'<link rel="canonical" href="([^"]*)">', text)
+    url = _meta(text, "og:url")
+    if canonical and url and html.unescape(canonical.group(1)) != url:
+        bad.append(f"{rel}: og:url {url} is not its canonical address")
+    image = _meta(text, "og:image")
+    if image:
+        local = root / image[len(SITE) + 1:] if image.startswith(SITE + "/") else None
+        if not local:
+            bad.append(f"{rel}: og:image {image} is not on this site")
+        elif not local.is_file():
+            bad.append(f"{rel}: og:image {image} is not there")
+        elif _meta(text, "og:image:width") and local.suffix == ".png":
+            said = (_meta(text, "og:image:width"), _meta(text, "og:image:height"))
+            real = png_size(local)
+            if real and said != (str(real[0]), str(real[1])):
+                bad.append(f"{rel}: og:image is {real[0]}x{real[1]}, the page says {said[0]}x{said[1]}")
+    return bad
+
+
+def sitemap_problems(root, sm):
+    """Every address in the sitemap is a page of the site that may be indexed, under its canonical
+    address; every page of the site that may be indexed is in it (mods.html only once the hub is on)."""
+    bad, listed = [], re.findall(r"<loc>([^<]*)</loc>", sm)
+    for loc in listed:
+        if not loc.startswith(SITE + "/"):
+            bad.append(f"sitemap.xml: {loc} is not on this site")
+            continue
+        rel = loc[len(SITE) + 1:] or "index.html"
+        page = root / rel
+        if not page.is_file():
+            bad.append(f"sitemap.xml: {loc} is not there")
+            continue
+        text = page.read_text(encoding="utf-8")
+        canonical = re.search(r'<link rel="canonical" href="([^"]*)">', text)
+        if not canonical or html.unescape(canonical.group(1)) != loc:
+            bad.append(f"sitemap.xml: {loc} is not the canonical address of {rel}")
+    if len(set(listed)) != len(listed):
+        bad.append("sitemap.xml: an address is listed twice")
+    for day in re.findall(r"<lastmod>([^<]*)</lastmod>", sm):
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            bad.append(f"sitemap.xml: lastmod {day} is not a date")
+    hub_on = False
+    try:
+        hub_on = json.loads((root / "data" / "hub.json").read_text(encoding="utf-8")).get("on") is True
+    except (OSError, ValueError, AttributeError):
+        pass
+    for page in sorted(root.glob("*.html")):
+        text = page.read_text(encoding="utf-8")
+        if 'content="noindex"' in text or (page.name == "mods.html" and not hub_on):
+            continue
+        loc = SITE + "/" + ("" if page.name == "index.html" else page.name)
+        if loc not in listed:
+            bad.append(f"sitemap.xml: missing {loc} (a page without noindex)")
+    return bad
+
+
 def design_page_problems(root, rel):
     """What is wrong with a design's page (tools/build_designs.py): missing, a local link to nothing,
     markup or a script from player text, structured data that does not parse, no title, description,
@@ -399,6 +482,7 @@ def design_page_problems(root, rel):
     # the site from being published. The fields of data/designs.json are checked above.
     if '<header class="topbar">' not in text or "Official links:" not in text:
         bad.append(f"{rel}: needs the navbar and the footer")
+    bad += share_problems(root, rel, text)
     return bad
 
 
@@ -472,6 +556,7 @@ def check_hub(root):
                 bad.append(f"mods/{page.name}: {ref}")
         if markup_from_text(text):
             bad.append(f"mods/{page.name}: markup from player text")
+        bad += share_problems(root, f"mods/{page.name}", text)
     return bad
 
 
@@ -609,6 +694,9 @@ def main():
                 "https://forza.dyotson.dev/press.html"):
         if loc not in sm:
             bad.append(f"sitemap.xml: missing {loc}")
+    bad += sitemap_problems(root, sm)
+    for page in sorted(root.glob("*.html")):
+        bad += share_problems(root, page.name, page.read_text(encoding="utf-8"))
     # The account page: never indexed, and its sign-in forms post to the accounts service only.
     account = (root / "account.html").read_text(encoding="utf-8") if (root / "account.html").is_file() else ""
     if account and 'content="noindex"' not in account:
