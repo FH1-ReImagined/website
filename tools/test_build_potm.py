@@ -11,9 +11,12 @@ standings asked for only when the contest ran then, and an unset, unreachable, b
 not-running service (an empty file; --require exits 1 when it cannot be read). check_site.py
 passes on what it writes and refuses a file that names photos the gallery does not list.
 
-The pages, in a headless Chrome or Chromium (CHROME=path, else one on PATH or Playwright's):
+The pages, in a headless Chrome or Chromium (CHROME=path, else one on PATH or Playwright's), on a
+copy of the site switched on (tools/potm_switch.py):
 - the home page shows the featured winner with the player's text as text, and makes no call to
   /api/; with no winner its section stays hidden;
+- switched off, with the same winner in the built file, the home page shows no winner section and
+  no link to the contest anywhere; switched on again, every file is the same, byte for byte;
 - photo-of-the-month.html shows the live standings from /api/potm/standings when the service
   answers, and the built copy when it does not; each entry with its photo, votes, likes and share
   links that carry the page's address with the entry's anchor; last month's state (being checked,
@@ -42,6 +45,7 @@ from PIL import Image, ImageDraw
 
 TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS))
+import potm_switch  # noqa: E402
 from test_build_gallery import browser_args, find_browser, free_port  # noqa: E402
 
 LEAK = "0009000000000001"   # a made-up XUID the service leaks by mistake
@@ -346,6 +350,47 @@ def texts_in(d, where):
     return [t for t, stack in d.texts if t and where in stack]
 
 
+class Shown(html.parser.HTMLParser):
+    """The links of a page as the browser left it that no hidden element holds (hidden, or
+    data-potm-off, which style.css never displays)."""
+    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links, self.stack = [], []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        hid = bool(self.stack and self.stack[-1][1]) or "hidden" in a or "data-potm-off" in a
+        if tag == "a" and not hid:
+            self.links.append(a.get("href") or "")
+        if tag not in self.VOID:
+            self.stack.append((tag, hid))
+
+    def handle_endtag(self, tag):
+        for n in range(len(self.stack) - 1, -1, -1):
+            if self.stack[n][0] == tag:
+                del self.stack[n:]
+                break
+
+
+def shown_contest_links(browser, url, profiles):
+    profile = Path(tempfile.mkdtemp(dir=profiles))
+    p = subprocess.run(browser_args(browser, profile) + ["--dump-dom", url], capture_output=True, text=True, timeout=120)
+    d = Shown()
+    d.feed(p.stdout)
+    return [h for h in d.links if potm_switch.is_contest(h)], p.stdout
+
+
+def switch(site, action):
+    return subprocess.run([sys.executable, str(TOOLS / "potm_switch.py"), action, "--root", str(site)],
+                          capture_output=True, text=True, timeout=60).returncode
+
+
+def files(site):
+    return {str(p.relative_to(site)): p.read_bytes() for p in sorted(site.rglob("*")) if p.is_file()}
+
+
 def check_pages(browser, site, service, profiles):
     SiteHandler.service = None
     handler = functools.partial(SiteHandler, directory=str(site))
@@ -361,6 +406,25 @@ def check_pages(browser, site, service, profiles):
               "home page: the featured winner's photo")
         check("October 2026" in texts_in(index, "potm"), "home page: the month it won")
         check(SiteHandler.api_calls == [], "home page: no call to /api/")
+        shown, _ = shown_contest_links(browser, base + "/index.html", profiles)
+        check("photo-of-the-month.html" in shown, "home page: the winner section links to the contest (Vote this month)")
+
+        print("-- the home page switched off, with the same winner")
+        check(potm_doc(site)["featured"] is not None, "the built file has a featured winner")
+        on = files(site)
+        check(switch(site, "off") == 0 and check_site(site).returncode == 0, "off: the switch and check_site.py pass")
+        index = dom_of(browser, base + "/index.html", profiles)
+        section = next((a for t, a, _ in index.tags if t == "section" and a.get("id") == "potm"), None)
+        check(section is not None and "hidden" in section and "data-potm-off" in section,
+              "off: the winner section stays hidden")
+        check(not any(t == "button" and a.get("data-full") == f"photos/{P4}.jpg" for t, a, _ in index.tags)
+              and "October 2026" not in texts_in(index, "potm"), "off: the winner's photo and month are not put in")
+        shown, dom = shown_contest_links(browser, base + "/index.html", profiles)
+        check("<footer" in dom and not shown, f"off: no link to the contest anywhere on the home page {shown}")
+        check(switch(site, "on") == 0 and files(site) == on, "on again: every file the same, byte for byte")
+        index = dom_of(browser, base + "/index.html", profiles)
+        section = next((a for t, a, _ in index.tags if t == "section" and a.get("id") == "potm"), None)
+        check(section is not None and "hidden" not in section, "on again: the winner section is shown")
 
         print("-- the leaderboard without the service: the built copy")
         page = dom_of(browser, base + "/photo-of-the-month.html", profiles)
@@ -444,6 +508,8 @@ def main():
         browser = find_browser()
         if browser:
             print(f"     {browser}")
+            check(switch(site, "on") == 0 and check_site(site).returncode == 0,
+                  "the copy switched on: check_site.py passes")
             (tmp / "profiles").mkdir()
             check_pages(browser, site, service, tmp / "profiles")
         elif os.environ.get("CI"):

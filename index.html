@@ -201,10 +201,10 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
       </div>
       <a class="link-more" href="photo-of-the-month.html">See the standings</a>
     </div>
-    <p class="potm-placeholder"><b>To be announced.</b> The announcement has not been written yet. It will say when the first contest starts and what the winner gets, with a link to the post on the Discord.</p>
+    <p class="potm-placeholder"><b>To be announced.</b> The announcement has not been written yet.</p>
   </section>
 
-  <section id="potm" class="stop" data-potm-featured hidden aria-labelledby="potm-h">
+  <section id="potm" class="stop" data-potm-featured data-potm-off hidden aria-labelledby="potm-h">
     <div class="section-head row">
       <div>
         <p class="kicker">Monthly event</p>
@@ -214,7 +214,7 @@ try { if (localStorage.getItem("fh-signed-in") === "1") document.documentElement
       <a class="link-more" href="photo-of-the-month.html">Vote this month</a>
     </div>
     <div class="potm-featured" data-potm-photo></div>
-    <p class="potm-placeholder" id="potm-credit" data-potm-switch hidden><b>To be announced.</b> How the winner is credited as Photographer of the Month, here and on the Discord, has not been decided yet.</p>
+    <p class="potm-placeholder" id="potm-credit" data-potm-switch hidden><b>To be announced.</b> How the winner is credited has not been decided yet.</p>
   </section>
 
   <section id="photos" class="stop" data-photos-section hidden aria-labelledby="photos-h">

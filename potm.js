@@ -2,7 +2,8 @@
 // accounts service (tools/build_potm.py): the newest winner ("featured"), every winner, and the
 // standings of this month and the month before, each photo with the files the gallery published.
 // - The home page (an element with data-potm-featured) shows the featured winner from that file
-//   only: it never calls the accounts service.
+//   only: it never calls the accounts service. While the contest is switched off
+//   (tools/potm_switch.py) the element is also marked data-potm-off and stays hidden, winner or not.
 // - photo-of-the-month.html (#potm-board) shows this month's standings, live: it asks the public
 //   /api/potm/standings (no cookie is sent) when the page opens and every minute while it is
 //   visible, and keeps the built copy when that fails (a copy of the site without /api/). Then
@@ -98,7 +99,7 @@
     var w = doc && doc.featured;
     featured.forEach(function (section) {
       var slot = section.querySelector("[data-potm-photo]");
-      if (!w || !hasPhoto(w) || !slot) { section.hidden = true; return; }
+      if (section.hasAttribute("data-potm-off") || !w || !hasPhoto(w) || !slot) { section.hidden = true; return; }
       var name = section.querySelector("[data-potm-month]");
       if (name) name.textContent = monthName(w.month);
       slot.replaceChildren(picture(w, true), byline(w));

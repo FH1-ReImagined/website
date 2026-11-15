@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Show Photo of the Month on the whole site, or hide it again, in one step; or say which it is.
 
-Off (while no contest runs): no page's navbar or footer links to it, sitemap.xml leaves out its two
-pages, both pages have <meta name="robots" content="noindex">, and every element marked
-data-potm-switch (the announcement, the "Photographer of the Month" credit) is hidden. On is all of
-that undone: "Photo of the Month" under Community in every navbar (the current page on its own
-page) and footer, right after Photos; its two sitemap entries after the gallery's; no noindex; the
-marked elements shown. The home page's winner section shows itself once there is a winner, in
-either state (potm.js).
+Off (while no contest runs): nothing of the contest is shown or linked outside its own two pages.
+No page's navbar or footer links to it, sitemap.xml leaves out its two pages, both pages have
+<meta name="robots" content="noindex">, every element marked data-potm-switch (the announcement,
+the winner's credit) is hidden, and the home page's winner section (data-potm-featured) is marked
+data-potm-off, so potm.js leaves it hidden even when data/photo-of-the-month.json has a winner. On
+is all of that undone: "Photo of the Month" under Community in every navbar (the current page on
+its own page) and footer, right after Photos; its two sitemap entries after the gallery's; no
+noindex; the marked elements shown; and the winner section without data-potm-off, so potm.js shows
+it once there is a winner.
 
   tools/potm_switch.py status            # on or off (exit 0), or what is half switched (exit 1)
   tools/potm_switch.py on                # then lists what is still marked as not decided
@@ -17,12 +19,15 @@ either state (potm.js).
 Switching on and then off again (or off and then on) gives back the same files byte for byte, and
 switching to the state the site is already in changes nothing. A half switched site is finished in
 the state asked for. A page that has lost the line the switch writes next to (its Photos link, its
-canonical link) stops the switch before any file is written. tools/check_site.py uses site_state()
-to refuse a site that is half switched.
+canonical link), or has a part written in another form than the switch's own (a link, a noindex,
+a mark with other attributes, spacing or case), stops the switch before any file is written.
+tools/check_site.py uses site_state() to refuse a site that is half switched or has such a part,
+and shown_links() to refuse an off site that still shows a link to the contest.
 
 Text still to be decided (the prize, the announcement, the credit) is marked class="potm-placeholder";
 `status` and `on` list it. Writing it is the maintainers' job, not this script's."""
 import argparse
+import html.parser
 import re
 import sys
 from pathlib import Path
@@ -44,6 +49,14 @@ NAV_POTM = re.compile(r'^[ \t]*<a href="photo-of-the-month\.html"[^>]*>Photo of 
 FOOT_PHOTOS = re.compile(r'^([ \t]*)<li><a href="gallery\.html">Photos</a></li>\n', re.M)
 FOOT_POTM = re.compile(r'^[ \t]*<li><a href="photo-of-the-month\.html"[^>]*>Photo of the Month</a></li>\n', re.M)
 SWITCH_ATTR = re.compile(r"\sdata-potm-switch( hidden)?(?=[\s>])")
+SWITCH_TAG = re.compile(r"<[a-z][^<>]*\sdata-potm-switch(?=[\s>])[^<>]*>")
+FEATURED_TAG = re.compile(r"<[a-z][^<>]*\sdata-potm-featured(?=[\s>])[^<>]*>")
+FEATURED, OFF_MARK = " data-potm-featured", " data-potm-off"
+OFF_AT = re.compile(re.escape(FEATURED + OFF_MARK) + r"(?=[\s>])")
+# Any form a browser reads: other case, other spacing, a value, other quotes.
+ANY_ATTR = {name: re.compile(r"<[a-z][^<>]*\s" + name + r"(?=[\s=/>])", re.I)
+            for name in ("data-potm-switch", "data-potm-featured", "data-potm-off")}
+HIDDEN_ATTR = re.compile(r"\shidden(?=[\s=/>])", re.I)
 PLACEHOLDER = re.compile(r'<(p|div|span|li)\b([^>]*\bclass="[^"]*\bpotm-placeholder\b[^"]*"[^>]*)>(.*?)</\1>', re.S)
 
 
@@ -53,6 +66,63 @@ class Broken(Exception):
 
 def pages(root):
     return sorted(p for p in root.glob("*.html") if p.is_file())
+
+
+def is_contest(href):
+    """Whether a link goes to one of the contest's two pages, however it is written."""
+    href = (href or "").strip().lower()
+    if href.startswith("//"):
+        href = "https:" + href
+    m = re.match(r"^(?:https?://([^/?#]*))?([^?#]*)", href)
+    if m.group(1) is not None and m.group(1) != SITE.split("://")[1]:
+        return False
+    return m.group(2).rsplit("/", 1)[-1] in (PAGE, RULES)
+
+
+class Links(html.parser.HTMLParser):
+    """Every link of a page or part of one (href, whether it is inside the navbar or the footer,
+    whether an element the switch hides holds it), and every robots meta."""
+    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links, self.robots, self.stack = [], [], []
+
+    def handle_starttag(self, tag, attrs):
+        a = {k: (v or "") for k, v in attrs}
+        frame = self.stack[-1][1:] if self.stack else (False, False)
+        edge = frame[0] or tag == "footer" or (tag == "header" and "topbar" in a.get("class", "").split())
+        hid = frame[1] or "data-potm-off" in a or ("data-potm-switch" in a and "hidden" in a)
+        if tag == "a" and "href" in a:
+            self.links.append((a["href"], edge, hid))
+        if tag == "meta" and a.get("name", "").strip().lower() in ("robots", "googlebot", "bingbot"):
+            self.robots.append(a.get("content", ""))
+        if tag not in self.VOID:
+            self.stack.append((tag, edge, hid))
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID and self.stack:
+            self.stack.pop()
+
+    def handle_endtag(self, tag):
+        for n in range(len(self.stack) - 1, -1, -1):
+            if self.stack[n][0] == tag:
+                del self.stack[n:]
+                break
+
+
+def links_of(text):
+    p = Links()
+    p.feed(text)
+    p.close()
+    return p
+
+
+def shown_links(text):
+    """The links to the contest outside the navbar and the footer that no element the switch hides
+    holds: [href]. While the contest is off there must be none outside its own two pages."""
+    return [href for href, edge, hid in links_of(text).links if is_contest(href) and not edge and not hid]
 
 
 def block(text, start, end):
@@ -72,6 +142,9 @@ def link_part(name, text, span, anchor, line, ours):
     a, b = span
     inner = text[a:b]
     found = list(ours.finditer(inner))
+    if sum(is_contest(href) for href, _, _ in links_of(inner).links) != len(found):
+        raise Broken(f"{name}: has a link to Photo of the Month the switch did not write "
+                     "(other attributes, spacing, case or place than its own line after Photos)")
     anchors = list(anchor.finditer(inner))
     if len(anchors) != 1:
         raise Broken(f"{name}: needs exactly one Photos link to write next to ({len(anchors)} found)")
@@ -81,7 +154,7 @@ def link_part(name, text, span, anchor, line, ours):
         on = inner[:m.end()] + mine + inner[m.end():]
         return "off", text[:a] + on + text[b:], text
     if len(found) > 1 or found[0].start() != m.end() or found[0].group(0) != mine:
-        raise Broken(f"{name}: the Photo of the Month link is not the one line the switch writes after Photos")
+        raise Broken(f"{name}: has a link to Photo of the Month the switch did not write (not its one line after Photos)")
     off = inner[:m.end()] + inner[found[0].end():]
     return "on", text, text[:a] + off + text[b:]
 
@@ -100,17 +173,24 @@ def page_parts(page, text):
         if text.count(canonical) != 1:
             raise Broken(f"{page.name}: needs its one canonical link to write noindex after")
         at = text.index(canonical) + len(canonical)
-        others = text.count('content="noindex"') - text[at:].startswith(NOINDEX)
-        if others:
+        # Every robots meta that says noindex, in any form: other attribute order, quotes, case.
+        noindex = [c for c in links_of(text).robots if re.search(r"\b(noindex|none)\b", c, re.I)]
+        if len(noindex) != text[at:].startswith(NOINDEX):
             raise Broken(f"{page.name}: has a noindex the switch did not write (right after the canonical link)")
         if text[at:].startswith(NOINDEX):
             parts.append((f"{page.name} noindex", "off", text[:at] + text[at + len(NOINDEX):], text))
         else:
             parts.append((f"{page.name} noindex", "on", text, text[:at] + NOINDEX + text[at:]))
-    for n, tag in enumerate(re.finditer(r"<[a-z][^<>]*\sdata-potm-switch(?=[\s>])[^<>]*>", text)):
+    for attr, ours in (("data-potm-switch", SWITCH_TAG), ("data-potm-featured", FEATURED_TAG)):
+        if len(ANY_ATTR[attr].findall(text)) != len(ours.findall(text)):
+            raise Broken(f"{page.name}: has a {attr} the switch did not write (write it as {attr}, lower case, "
+                         "with no value)")
+    if len(ANY_ATTR["data-potm-off"].findall(text)) != len(OFF_AT.findall(text)):
+        raise Broken(f"{page.name}: has a data-potm-off the switch did not write (right after data-potm-featured)")
+    for n, tag in enumerate(SWITCH_TAG.finditer(text)):
         t = tag.group(0)
         m = SWITCH_ATTR.search(t)
-        if re.search(r"\shidden(?=[\s=>])", t[:m.start()] + t[m.end():]):
+        if HIDDEN_ATTR.search(t[:m.start()] + t[m.end():]):
             raise Broken(f"{page.name}: write hidden right after data-potm-switch, nothing else: {t}")
         ident = re.search(r'\sid="([^"]*)"', t)
         name = f"{page.name} " + (f"#{ident.group(1)}" if ident else f"data-potm-switch {n + 1}")
@@ -119,19 +199,34 @@ def page_parts(page, text):
             parts.append((name, "off", text[:a] + " data-potm-switch" + text[b:], text))
         else:
             parts.append((name, "on", text, text[:a] + " data-potm-switch hidden" + text[b:]))
+    for n, tag in enumerate(FEATURED_TAG.finditer(text)):
+        t = tag.group(0)
+        if not HIDDEN_ATTR.search(t):
+            raise Broken(f"{page.name}: an element marked data-potm-featured must start hidden (potm.js shows it): {t}")
+        ident = re.search(r'\sid="([^"]*)"', t)
+        name = f"{page.name} " + (f"#{ident.group(1)}" if ident else f"data-potm-featured {n + 1}")
+        a = tag.start() + t.index(FEATURED) + len(FEATURED)
+        if OFF_AT.match(text, a - len(FEATURED)):
+            parts.append((name, "off", text[:a] + text[a + len(OFF_MARK):], text))
+        else:
+            parts.append((name, "on", text, text[:a] + OFF_MARK + text[a:]))
     return parts
 
 
 def sitemap_part(text):
-    have = [loc for loc in (PAGE, RULES) if f"<loc>{SITE}/{loc}</loc>" in text]
+    have = [loc for loc in (PAGE, RULES) if re.search(re.escape(loc), text, re.I)]
     if text.count(SITEMAP_ENTRIES) == 1:
         at = text.index(SITEMAP_ENTRIES)
         anchor = list(SITEMAP_AFTER.finditer(text))
+        again = [loc for loc in (PAGE, RULES) if len(re.findall(re.escape(loc), text, re.I)) != 1]
+        if again:
+            raise Broken(f"sitemap.xml: {', '.join(again)} listed again, in a form the switch did not write")
         if len(anchor) != 1 or anchor[0].end() != at:
             raise Broken("sitemap.xml: the Photo of the Month entries are not right after the gallery's")
         return "on", text, text[:at] + text[at + len(SITEMAP_ENTRIES):]
     if have:
-        raise Broken(f"sitemap.xml: {', '.join(have)} listed, but not as the two entries the switch writes")
+        raise Broken(f"sitemap.xml: {', '.join(have)} listed in a form the switch did not write "
+                     "(not its two entries after the gallery's)")
     anchor = list(SITEMAP_AFTER.finditer(text))
     if len(anchor) != 1:
         raise Broken("sitemap.xml: needs the gallery's entry to write after")

@@ -143,22 +143,29 @@ Photo of the Month is switched off until the contest runs. One command switches 
 | `sitemap.xml` | neither page | both pages, after the gallery |
 | `photo-of-the-month.html`, `photo-of-the-month-rules.html` | `noindex` | indexed |
 | Elements marked `data-potm-switch` | hidden | shown |
+| The home page's winner section (`data-potm-featured`) | marked `data-potm-off`: hidden, even with a winner | shown once there is a winner |
 
-The marked elements are the announcement (on the home page and the contest page) and the winner's
-"Photographer of the Month" credit (in the home page's winner section and the rules). The home
-page's winner section itself shows once there is a winner, in either state. The hub's item pages
-copy the navbar of `mods.html`, so they follow.
+Off means nothing of the contest is shown or linked outside its own two pages. The marked elements
+are the announcement (on the home page and the contest page) and the winner's credit (in the home
+page's winner section and the rules). The winner section, with its "Vote this month" link, stays
+hidden while the contest is off even when `data/photo-of-the-month.json` has a winner. The hub's
+item pages copy the navbar of `mods.html`, so they follow.
 
 Switching on and then off again gives back the same files, byte for byte; switching to the state
 the site is already in changes nothing; a half switched site is finished in the state asked for. A
 page that has lost the line the switch writes next to (its Photos link, its canonical link) stops
-the switch before it writes anything. `tools/check_site.py` refuses a site that is half switched,
-and keeps `photo-of-the-month.html` out of the navbar check while the contest is off.
+the switch before it writes anything, and so does a link, a `noindex` or a mark written in another
+form than the switch's own (other attributes, spacing or case). `tools/check_site.py` refuses a site
+that is half switched or has such a part, refuses an off site where any other page still links to
+the contest outside what the switch hides, and keeps `photo-of-the-month.html` out of the navbar
+check while the contest is off.
 `tools/test_potm_switch.py` tests all of this on a copy of the site.
 
 Before switching on, the text still to be decided has to be written. It is marked
-`class="potm-placeholder"`, and `status` and `on` list it: the prize (the rules page), the
-announcement and the Photographer of the Month credit. Switch on and write it in the same pull request.
+`class="potm-placeholder"`, and `status` and `on` list it: whether there is a prize (the rules
+page), the announcement and how the winner is credited. Each placeholder only says "To be
+announced" and that it is not decided yet: no prize, no dates, no title for the winner. Switch on
+and write it in the same pull request.
 
 ## History
 

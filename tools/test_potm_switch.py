@@ -5,18 +5,27 @@ and the check in tools/check_site.py that the site is wholly in one state, on a 
 
 - This repository is wholly on or off, and check_site.py passes on it.
 - Off: no navbar or footer links to the contest, the sitemap leaves its two pages out, both pages
-  have noindex, and every element marked data-potm-switch (the announcement, the "Photographer of
-  the Month" credit) is hidden. On: "Photo of the Month" right after Photos in every navbar (the
-  current page on its own page) and footer, also on the hub's item pages, both sitemap entries,
-  no noindex, the marked elements shown. check_site.py passes on both.
+  have noindex, every element marked data-potm-switch (the announcement, the winner's credit) is
+  hidden, the home page's winner section is marked data-potm-off, and no other page links to the
+  contest outside what the switch hides. On: "Photo of the Month" right after Photos in every
+  navbar (the current page on its own page) and footer, also on the hub's item pages, both
+  sitemap entries, no noindex, the marked elements shown, the winner section left to potm.js.
+  check_site.py passes on both. (tools/test_build_potm.py loads the home page in a browser, with
+  a winner, in both states.)
 - Switching on and back off, or off and back on, gives the same files byte for byte; switching to
   the state the site is in changes nothing; a page added later is switched with the others.
 - Half switched (one navbar, or the sitemap): status exits 1 and names it, check_site.py refuses
   the site, and on or off finishes it.
 - A page that lost its Photos link, or a hidden written elsewhere in a switched tag: the switch
   writes nothing and exits 2.
-- What is not decided yet (the prize, the announcement, the credit) is listed by status and on,
-  and leaves the list once a maintainer writes it.
+- A footer or navbar link, a noindex, a mark or a sitemap entry written in another form than the
+  switch's own (other attribute order, spacing, quotes or case): status exits 1, check_site.py
+  refuses the site and names the page, and the switch writes nothing and exits 2, on or off.
+- An off site whose winner section lost its data-potm-off: check_site.py refuses it (half
+  switched, and a link to the contest that the home page would show), and on or off finishes it.
+- What is not decided yet (whether there is a prize, the announcement, the credit) is listed by
+  status and on, and leaves the list once a maintainer writes it. Each placeholder says "To be
+  announced." and that it is not decided, and promises nothing: no prize, no dates, no title.
 
   python3 tools/test_potm_switch.py   # needs Pillow (tools/requirements.txt), for build_hub's import
 """
@@ -114,7 +123,10 @@ def check_on(site, what):
     names = {(n, a.get("id")) for n, a in marked}
     check({("index.html", "potm-news"), ("index.html", "potm-credit"), (LINK, "potm-news"),
            ("photo-of-the-month-rules.html", "potm-credit")} <= names,
-          f"{what}: the announcement and the Photographer of the Month credit are among them")
+          f"{what}: the announcement and the winner's credit are among them")
+    potm = winner_section(site)
+    check("hidden" in potm and "data-potm-off" not in potm,
+          f"{what}: the home page's winner section is left to potm.js (hidden until there is a winner)")
 
 
 def check_off(site, what):
@@ -127,10 +139,21 @@ def check_off(site, what):
               for n in (LINK, "photo-of-the-month-rules.html")), f"{what}: both pages have noindex")
     marked = [a for p in pages for t, a, _ in tags_of(p) if "data-potm-switch" in a]
     check(len(marked) >= 4 and all("hidden" in a for a in marked), f"{what}: the switched elements are hidden")
+    potm = winner_section(site)
+    check("hidden" in potm and "data-potm-off" in potm,
+          f"{what}: the home page's winner section is marked data-potm-off (potm.js leaves it hidden)")
+    leaks = {p.name: potm_switch.shown_links(p.read_text(encoding="utf-8")) for p in pages
+             if p.name not in (LINK, "photo-of-the-month-rules.html")}
+    check(len(leaks) > 5 and not any(leaks.values()),
+          f"{what}: no other page links to the contest outside what the switch hides {[k for k, v in leaks.items() if v]}")
     index = tags_of(site / "index.html")
-    potm = next((a for t, a, _ in index if t == "section" and a.get("id") == "potm"), {})
-    check("hidden" in potm and any(t == "a" and a.get("href") == LINK and "potm" in s for t, a, s in index),
-          f"{what}: the home page's winner section is still there, hidden until there is a winner")
+    inside = [s for t, a, s in index if t == "a" and potm_switch.is_contest(a.get("href"))]
+    check(inside and all("potm" in s or "potm-news" in s for s in inside),
+          f"{what}: the home page's links to the contest are all in the announcement or the winner section")
+
+
+def winner_section(site):
+    return next((a for t, a, _ in tags_of(site / "index.html") if t == "section" and a.get("id") == "potm"), {})
 
 
 def check_hub_page(site):
@@ -243,12 +266,92 @@ def main():
         check(rc == 2 and "noindex the switch did not write" in log and files(site) == broken,
               "a noindex somewhere else in the head: nothing written, exit 2")
 
+        print("-- written in another form than the switch's own")
+        def refused(what, page, find, put, where, start=off):
+            restore(start)
+            path = site / page
+            text = path.read_text(encoding="utf-8")
+            if find not in text:
+                check(False, f"{what}: the test's text is in {page}")
+                return
+            path.write_text(text.replace(find, put, 1), encoding="utf-8")
+            broken = files(site)
+            rc, log = switch(site, "status")
+            ok = rc == 1 and where in log and "did not write" in log
+            rc, clog = check_site(site)
+            ok = ok and rc == 1 and where in clog
+            results = [switch(site, action) for action in ("on", "off")]
+            ok = ok and all(r == 2 and where in out and "nothing was changed" in out for r, out in results)
+            check(ok and files(site) == broken, f"{what}: status names {where}, check_site.py refuses, on and off write nothing")
+        foot = f'<li><a href="{LINK}">Photo of the Month</a></li>'
+        photos = '<li><a href="gallery.html">Photos</a></li>\n'
+        for what, link in (("footer link with another attribute first", f'<li><a class="x" href="{LINK}">Photo of the Month</a></li>'),
+                           ("footer link with a space before >", f'<li><a href="{LINK}" >Photo of the Month</a></li>'),
+                           ("footer link in upper case", f'<LI><A HREF="{LINK.upper()}">Photo of the Month</A></LI>'),
+                           ("footer link in single quotes", f"<li><a href='{LINK}'>Photo of the Month</a></li>"),
+                           ("footer link to the site's address", f'<li><a href="https://forza.dyotson.dev/{LINK}">Photo of the Month</a></li>'),
+                           ("footer link on the same line as Photos", None)):
+            if link is None:
+                refused(f"off, {what}", "press.html", photos, photos[:-1] + foot + "\n", "press.html footer")
+                continue
+            refused(f"off, {what}", "press.html", photos, photos + "          " + link + "\n", "press.html footer")
+            refused(f"on, {what}", "press.html", foot, link, "press.html footer", start=on)
+        refused("off, navbar link with another attribute first", "faq.html", '<a href="gallery.html">Photos</a>\n',
+                f'<a href="gallery.html">Photos</a>\n          <a class="x" href="{LINK}">Photo of the Month</a>\n', "faq.html navbar")
+        noindex = '<meta name="robots" content="noindex">\n'
+        canonical = f'<link rel="canonical" href="https://forza.dyotson.dev/{LINK}">\n'
+        for what, meta in (("content first", '<meta content="noindex" name="robots">'),
+                           ("single quotes", "<meta name='robots' content='noindex'>"),
+                           ("upper case", '<META NAME="ROBOTS" CONTENT="NOINDEX">'),
+                           ("two spaces", '<meta name="robots"  content="noindex">'),
+                           ("noindex, follow", '<meta name="robots" content="noindex, follow">')):
+            refused(f"off, noindex with {what}", LINK, noindex, meta + "\n", f"{LINK}: has a noindex")
+            refused(f"on, noindex with {what}", LINK, canonical, canonical + meta + "\n", f"{LINK}: has a noindex", start=on)
+        featured = '<section id="potm" class="stop" data-potm-featured data-potm-off hidden'
+        for what, tag in (("data-potm-off with a value", '<section id="potm" class="stop" data-potm-featured data-potm-off="" hidden'),
+                          ("data-potm-off in upper case", '<section id="potm" class="stop" data-potm-featured DATA-POTM-OFF hidden'),
+                          ("data-potm-off before data-potm-featured", '<section id="potm" class="stop" data-potm-off data-potm-featured hidden'),
+                          ("data-potm-featured in upper case", '<section id="potm" class="stop" DATA-POTM-FEATURED data-potm-off hidden')):
+            refused(f"off, {what}", "index.html", featured, tag, "index.html: has a data-potm-")
+        refused("off, data-potm-switch with a value", "index.html", 'id="potm-credit" data-potm-switch hidden',
+                'id="potm-credit" data-potm-switch="" hidden', "index.html: has a data-potm-switch")
+        refused("off, a sitemap entry in upper case", "sitemap.xml", "</urlset>",
+                f"  <url>\n    <loc>https://forza.dyotson.dev/{LINK.upper()}</loc>\n  </url>\n</urlset>", "sitemap.xml")
+
+        print("-- off, but the home page's winner section would show")
+        restore(off)
+        index.write_text(index.read_text(encoding="utf-8").replace(" data-potm-featured data-potm-off hidden",
+                                                                   " data-potm-featured hidden", 1), encoding="utf-8")
+        rc, log = switch(site, "status")
+        check(rc == 1 and "index.html #potm" in log, "status: half switched, names index.html #potm")
+        rc, log = check_site(site)
+        check(rc == 1 and "half switched" in log and "index.html: links to Photo of the Month while it is off" in log
+              and LINK in log, "check_site.py refuses it: half switched, and the winner section's link would show")
+        half = files(site)
+        rc, log = switch(site, "off")
+        check(rc == 0 and files(site) == off, "off puts data-potm-off back")
+        restore(half)
+        rc, log = switch(site, "on")
+        check(rc == 0 and files(site) == on, "on finishes it")
+        restore(off)
+        index.write_text(index.read_text(encoding="utf-8").replace(
+            "</main>", f'<p><a href="./{LINK}#now">Vote</a></p>\n</main>', 1), encoding="utf-8")
+        rc, log = check_site(site)
+        check(rc == 1 and "index.html: links to Photo of the Month while it is off" in log,
+              "off, a link to the contest anywhere else on the home page: check_site.py refuses it")
+
         print("-- not decided yet")
         restore(off)
+        for name, words in potm_switch.undecided(site):
+            loose = re.findall(r"\b(will|prize is|wins|gets|receive\w*|role|Photographer|Discord|starts?|before|after|"
+                               r"January|February|March|April|May|June|July|August|September|October|November|"
+                               r"December|\d+)\b", words, re.I)
+            check(words.startswith("To be announced.") and "has not been" in words and not loose,
+                  f"placeholder in {name} only says it is to be announced: {words!r}" + (f" (promises: {loose})" if loose else ""))
         rc, log = switch(site, "on")
         todo = [line for line in log.splitlines() if line.startswith("  ")]
-        check(len(todo) >= 5 and any("prize" in line for line in todo) and any("announcement" in line for line in todo)
-              and any("Photographer of the Month" in line for line in todo), "on lists the prize, the announcement and the credit")
+        check(len(todo) >= 5 and any("prize" in line for line in todo) and any("announce" in line for line in todo)
+              and any("credited" in line for line in todo), "on lists the prize, the announcement and the credit")
         index.write_text(index.read_text(encoding="utf-8").replace(
             '<p class="potm-placeholder" id="potm-credit"', '<p class="potm-credit" id="potm-credit"', 1), encoding="utf-8")
         rc, log = switch(site, "status")

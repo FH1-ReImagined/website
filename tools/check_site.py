@@ -18,7 +18,9 @@ When Photo of the Month was (tools/build_potm.py), data/photo-of-the-month.json:
 the pages show, months and ids that are months and ids, counts that are counts, and every photo
 it names one that data/gallery.json lists, with the same files.
 Photo of the Month is wholly on or wholly off (tools/potm_switch.py): its navbar and footer links,
-sitemap entries, noindex and switched elements all in the same state, never half.
+sitemap entries, noindex, switched elements and the home page's winner section all in the same
+state, never half, and none of them written in another form than the switch's own; while it is off,
+no page but its own two links to it outside what the switch hides.
   tools/check_site.py OUT"""
 import html.parser
 import json
@@ -580,6 +582,19 @@ def main():
     # Photo of the Month: wholly on or wholly off (tools/potm_switch.py), never half.
     potm_state, problems = potm_switch.site_state(root)
     bad += [f"Photo of the Month: {p}" for p in problems]
+    # Off: nothing of it shown or linked outside its own two pages, whatever
+    # data/photo-of-the-month.json says (the home page's winner section included). Also checked on a
+    # site half switched but mostly off, the way it is most likely meant.
+    parts, _ = potm_switch.parts_of(root)
+    on_parts = sum(state == "on" for _, _, state in parts)
+    if potm_state == "off" or (potm_state is None and on_parts <= len(parts) - on_parts):
+        for page in sorted(root.glob("*.html")):
+            if page.name in (potm_switch.PAGE, potm_switch.RULES):
+                continue
+            shown = potm_switch.shown_links(page.read_text(encoding="utf-8"))
+            if shown:
+                bad.append(f"{page.name}: links to Photo of the Month while it is off, outside what the switch hides "
+                           f"(data-potm-switch hidden, data-potm-off): {', '.join(sorted(set(shown)))}")
     not_in_nav = NOT_IN_NAV | (set() if potm_state == "on" else {potm_switch.PAGE})
     # The same navbar on every page. aria-current="page" is the only difference.
     navs = {}
