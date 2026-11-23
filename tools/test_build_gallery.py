@@ -15,7 +15,10 @@ Chrome or Chromium (CHROME=path, else one on PATH or Playwright's): the front pa
 newest photos with the players' text as text, gallery.html lists them all, and with an empty
 gallery the front page hides its photos section; each photo shows its like total (a link to sign
 in, with no call to /api/) and a link to its owner's page, and profile.html?p=<owner> lists that
-player's photos only, with their gamertag and totals.
+player's photos only, with their gamertag and totals. A link to one photo
+(gallery.html#photo-<id>) opens the photos page at it, in the viewer; one to a photo the site no
+longer has says so; the viewer's Copy link and Share give that link from every page (and nothing
+for a picture that is not a community photo), and fit beside the close button on a phone.
 
   python3 tools/test_build_gallery.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_gallery.py --serve 8000   # then serve the fixture site for a look
@@ -28,11 +31,13 @@ import collections
 import functools
 import glob
 import hashlib
+import html
 import html.parser
 import io
 import json
 import os
 import random
+import re
 import shutil
 import socket
 import subprocess
@@ -412,6 +417,134 @@ def dom_of(browser, url, profile):
     return d
 
 
+# A copy of a page with this script before photos.js: navigator.clipboard and (with ?share) the
+# share sheet only record what they are asked; then it opens the photo the test names (?open=<n>:
+# the n-th community photo of the page, by a click), presses Copy link and Share, slides to the
+# next photo and reports.
+LINK_TEST = r"""
+(function () {
+  var q = new URLSearchParams(location.search), out = {copied: [], shared: []};
+  try {
+    Object.defineProperty(navigator, "clipboard", {configurable: true, value: {
+      writeText: function (t) { out.copied.push(t); return Promise.resolve(); }}});
+    if (q.has("share")) Object.defineProperty(navigator, "share", {configurable: true, value: function (d) {
+      out.shared.push(d); return Promise.resolve(); }});
+    else Object.defineProperty(navigator, "share", {configurable: true, value: undefined});
+  } catch (e) { out.error = String(e); }
+  function report() {
+    var pre = document.getElementById("test-results") || document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify(out);
+    document.body.append(pre);
+  }
+  function rect(e) { var r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; }
+  function visible(e) { return !!e && !e.hidden && getComputedStyle(e).display !== "none" && e.getClientRects().length > 0; }
+  document.addEventListener("photos:shown", function () {
+    setTimeout(function () {
+      var box = document.getElementById("lightbox");
+      var picked = q.get("open");
+      if (picked === "feature") {
+        var f = document.createElement("button");  // a picture button that is not a community photo
+        f.type = "button"; f.dataset.full = "images/social-preview.png"; f.dataset.cap = "Screenshot";
+        document.body.append(f); f.click();
+      } else if (picked !== null) {
+        document.querySelectorAll("[data-photos] button[data-full]")[parseInt(picked, 10)].click();
+      }
+      var share = box.querySelector(".viewer-share"), copy = box.querySelector(".viewer-copy");
+      out.open = box.open;
+      out.shareShown = visible(share);
+      out.buttons = share ? Array.prototype.filter.call(share.querySelectorAll("button"), visible).map(function (b) { return b.textContent; }) : [];
+      out.native = share && share.classList.contains("has-native");
+      out.share = visible(share) ? rect(share) : null;
+      out.close = rect(box.querySelector(".close"));
+      out.count = rect(box.querySelector(".viewer-count"));
+      out.width = innerWidth;
+      if (!visible(share)) return report();
+      if (visible(copy)) copy.click();
+      var nat = share.querySelector("button:not(.viewer-copy)");
+      if (nat) nat.click();
+      setTimeout(function () {
+        out.copyText = copy.textContent;
+        out.status = box.querySelector("[role=status]").textContent;
+        box.querySelector(".viewer-next").click();
+        setTimeout(function () {
+          out.copyAfter = copy.textContent;
+          if (visible(copy)) copy.click();
+          report();
+        }, 900);
+      }, 50);
+    }, 300);
+  });
+})();
+"""
+
+
+def link_run(browser, url, profile, width=None):
+    profile = Path(tempfile.mkdtemp(dir=profile))
+    args = browser_args(browser, profile) + ([f"--window-size={width},800"] if width else []) + ["--dump-dom", url]
+    p = subprocess.run(args, capture_output=True, text=True, timeout=120)
+    m = re.search(r'<pre id="test-results">(.*?)</pre>', p.stdout, re.S)
+    return json.loads(html.unescape(m.group(1))) if m else None
+
+
+def check_links(browser, site, base, order, expect, profile):
+    """The link to one photo, and the viewer's Copy link and Share."""
+    third = order[2]
+    page = dom_of(browser, base + f"/gallery.html#photo-{third}", profile)
+    box = next((a for t, a in page.tags if t == "dialog" and a.get("id") == "lightbox"), {})
+    at = next((k for k, (t, a) in enumerate(page.tags) if t == "div" and "viewer-slide" in a.get("class", "")
+               and a.get("aria-hidden") == "false"), None)
+    hi = next((a for t, a in page.tags[at:] if t == "img" and "viewer-hi" in a.get("class", "")), {}) if at is not None else {}
+    check("open" in box and hi.get("src") == f"photos/{third}.jpg",
+          f"gallery.html#photo-<id> opens the viewer at that photo ({hi.get('src')})")
+    gone = next((a for t, a in page.tags if t == "p" and "photo-gone" in a.get("class", "")), None)
+    check(gone is not None and "hidden" in gone, "and says nothing about a missing photo")
+    buttons = [a.get("data-photo") for t, a in page.tags if t == "button" and a.get("data-full", "").startswith("photos/")]
+    check(buttons == list(order), "every photo's button carries its id")
+
+    page = dom_of(browser, base + "/gallery.html#photo-AAAAAAAAAAAA", profile)
+    box = next((a for t, a in page.tags if t == "dialog" and a.get("id") == "lightbox"), {})
+    gone = next((a for t, a in page.tags if t == "p" and "photo-gone" in a.get("class", "")), None)
+    check("open" not in box and gone is not None and "hidden" not in gone
+          and any("no longer on the site" in x and "Here are the others" in x for x in page.texts),
+          "a link to a photo the site no longer has says so above the photos, and opens nothing")
+    page = dom_of(browser, base + "/gallery.html#photos", profile)
+    check(not any(t == "p" and "photo-gone" in a.get("class", "") for t, a in page.tags), "another address shows no such note")
+
+    (site / "link-test.js").write_text(LINK_TEST)
+    for name in ("gallery", "index", "profile"):
+        text = (site / f"{name}.html").read_text(encoding="utf-8")
+        (site / f"link-{name}.html").write_text(text.replace('<script src="photos.js"></script>',
+                                                             '<script src="link-test.js"></script>\n<script src="photos.js"></script>'))
+    want = lambda i: base + f"/gallery.html#photo-{i}"
+    r = link_run(browser, base + "/link-gallery.html?open=2", profile)
+    check(bool(r) and r.get("open") and r.get("buttons") == ["Copy link"] and not r.get("native"),
+          f"the viewer shows Copy link (no Share without a share sheet) ({r})")
+    check(bool(r) and r.get("copied") == [want(order[2]), want(order[3])],
+          "Copy link copies the photos page's link to the photo shown, and to the next one after a slide")
+    check(bool(r) and r.get("copyText") == "Link copied" and "copied" in r.get("status", "") and r.get("copyAfter") == "Copy link",
+          "it says the link is copied (also to a screen reader), and the next photo starts over")
+    r = link_run(browser, base + "/link-index.html?open=0&share", profile)
+    check(bool(r) and r.get("buttons") == ["Share", "Copy link"] and r.get("copied", [None])[0] == want(order[0])
+          and [d.get("url") for d in r.get("shared", [])] == [want(order[0])],
+          f"the front page: Share and Copy link give the photos page's link ({r and (r.get('buttons'), r.get('shared'))})")
+    check(bool(r) and r["shared"] and "Forza Horizon 1: ReImagined" in r["shared"][0].get("title", ""), "the share sheet gets a title")
+    mine = [i for i in order if expect["owners"].get(i) == OWNER_A]
+    r = link_run(browser, base + f"/link-profile.html?p={OWNER_A}&open=0", profile)
+    check(bool(r) and r.get("copied", [None])[0] == want(mine[0]), "a player's page: the photos page's link too")
+    r = link_run(browser, base + "/link-gallery.html?open=feature", profile)
+    check(bool(r) and r.get("open") and not r.get("shareShown"), "a picture that is not a community photo has no link to share")
+
+    for width, share in ((360, True), (360, False), (1280, True)):
+        r = link_run(browser, base + "/link-gallery.html?open=2" + ("&share" if share else ""), profile, width)
+        ok = bool(r) and r.get("share") and r["share"][2] <= r["close"][0] - 4 and r["share"][0] >= r["count"][2] + 4 \
+            and r["share"][0] >= 0
+        check(ok, f"{width} px wide{', with a share sheet' if share else ''}: the share buttons sit between the count and the close button "
+                  f"({r and (r.get('count'), r.get('share'), r.get('close'), r.get('buttons'))})")
+        if width == 360 and share:
+            check(bool(r) and r.get("buttons") == ["Share"], "on a phone with a share sheet only Share shows (the sheet has its own copy)")
+
+
 def check_pages(browser, site, order, expect, profile):
     httpd, base = serve_dir(site)
     try:
@@ -461,6 +594,7 @@ def check_pages(browser, site, order, expect, profile):
               and any("no such player" in x for x in prof.texts), "profile.html: an id that is not a player id shows nothing")
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in page.tags),
               "gallery.html: the player's markup is not turned into elements")
+        check_links(browser, site, base, order, expect, profile)
 
         (site / "data" / "gallery.json").write_text(json.dumps({"version": 1, "generated": NOW, "photos": []}))
         index = dom_of(browser, base + "/index.html", profile)

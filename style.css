@@ -381,6 +381,16 @@ html.viewer-open { overflow: hidden; }
 .viewer-cap b { font: 800 21px/1.2 var(--font-headline); color: var(--cream); letter-spacing: .01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .viewer-cap span { color: var(--muted); font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .viewer-cap span:empty { display: none; }
+/* a community photo's Share and Copy link, left of the close button; on a phone only one of them
+   (the share sheet has a copy of its own) */
+.viewer-share { position: absolute; z-index: 3; top: 15px; right: calc(max(12px, env(safe-area-inset-right)) + 56px); display: flex; gap: 8px; }
+.viewer-share[hidden] { display: none; }
+.viewer-share-btn {
+  all: unset; box-sizing: border-box; min-height: 40px; padding: 0 16px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center;
+  font: 700 15px/1 var(--font-ui); letter-spacing: .02em; color: var(--cream); background: rgba(241, 227, 206, .08); border: 1px solid rgba(241, 227, 206, .18);
+}
+.viewer-share-btn:hover { background: rgba(228, 150, 87, .2); }
+.viewer-share-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 @media (max-width: 700px) {
   .viewer-stage, .player-stage { top: 64px; bottom: 96px; }
   .player-stage { padding: 0; }
@@ -389,6 +399,8 @@ html.viewer-open { overflow: hidden; }
   .viewer-nav { top: auto; bottom: 22px; margin-top: 0; width: 48px; height: 48px; }
   .viewer-cap { padding: 12px 72px calc(12px + env(safe-area-inset-bottom)); }
   .viewer-cap b { font-size: 20px; }
+  .viewer-share { top: 15px; }
+  .viewer-share.has-native .viewer-copy { display: none; }
 }
 @media (pointer: coarse) and (min-width: 701px) { .viewer-nav { width: 58px; height: 58px; } }
 
@@ -775,6 +787,7 @@ a.photo-by:hover { color: var(--orange); text-decoration: underline; }
 .shots.photos.all { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .photo-state, .design-state { color: var(--muted); margin: 10px 2px 0; }
 .photo-state.error, .design-state.error { color: #faede8; }
+.photo-state.photo-gone { margin: 0 2px 18px; color: var(--text); }
 /* While the photos or the designs load (aria-busy, in the page and taken off by photos.js and
    designs.js) the "Loading..." line keeps a screen of room below it, and a player's page and the
    Online page keep their footer below the fold: nothing jumps when the list comes in. (Not the

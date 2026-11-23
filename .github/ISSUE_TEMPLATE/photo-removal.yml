@@ -10,7 +10,7 @@ body:
     id: photo
     attributes:
       label: Which photo
-      description: Its title and gamertag, or its address (open it in the gallery and copy the image address).
+      description: Its link (open it on the photos page and choose Copy link), or its title and gamertag.
     validations:
       required: true
   - type: dropdown
