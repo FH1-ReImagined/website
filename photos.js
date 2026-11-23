@@ -397,6 +397,10 @@
       s.classList.toggle("error", !!failed);
     });
     if (window.FHLikes) window.FHLikes.fill(document);
+    if (tools) {  // nothing to sort or filter: the controls stay in place, switched off
+      sortBy.disabled = filter.disabled = !!failed || !photos.length;
+      clearer.hidden = !filter.value || filter.disabled;
+    }
     if (!failed) arrange(photos);
     if (!failed) opened(photos.length > 0);
     document.dispatchEvent(new Event("photos:shown"));
@@ -406,15 +410,18 @@
   // list only. Both are kept in the address, ?sort=liked|oldest and ?by=<text>, so a link gives
   // the same view; the fragment stays the viewer's (#photo-<id>). The cards are drawn once (their
   // likes filled in) and then only moved, or hidden by the filter, so nothing loads again. "Most
-  // liked" uses the build's like totals ("likes"): when the build has none (the accounts service
-  // unset or down) the option is taken out, and a ?sort=liked address shows the newest first. The
-  // suggestions are the gamertags of the photos on the page (player text: set as a value only).
+  // liked" is offered when the build has like totals ("likes"; a photo without one, such as one
+  // only the live feed lists yet, counts as 0): when it has none (the accounts service unset or
+  // down) the option is taken out, and a ?sort=liked address shows the newest first. It orders by
+  // the totals the cards show: for a visitor who signed in, those likes.js got from the accounts
+  // service (the list is sorted again once they are in). The suggestions are the gamertags of the
+  // photos on the page (player text: set as a value only).
   var gallery = lists.filter(function (l) { return l.dataset.photos === "all" && !l.hasAttribute("data-photos-owner"); })[0];
   var sortBy = document.getElementById("photo-sort"), filter = document.getElementById("photo-filter");
   var clearer = document.getElementById("photo-filter-clear"), suggest = document.getElementById("photo-tags");
   var counter = document.querySelector("[data-photos-count]"), said = document.querySelector("[data-photos-said]");
   var noneState = document.querySelector("[data-photos-none]");
-  var tools = gallery && sortBy && filter ? { cards: null, timer: 0, sayTimer: 0, total: 0 } : null;
+  var tools = gallery && sortBy && filter ? { cards: null, timer: 0, sayTimer: 0, retry: 0, total: 0, order: null } : null;
   var ORDERS = {
     newest: function (a, b) { return a.at - b.at; },
     liked: function (a, b) { return b.likes - a.likes || a.at - b.at; },
@@ -423,9 +430,14 @@
   function fold(s) { return s.normalize ? s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : s.toLowerCase(); }
   function likesOf(p) { return typeof p.likes === "number" && isFinite(p.likes) && p.likes >= 0 ? p.likes : null; }
   function howMany(n) { return n.toLocaleString("en") + (n === 1 ? " photo" : " photos"); }
+  // a card's like total: the one its like slot shows (likes.js), else the build's
+  function liked(c) {
+    var slot = c.li.querySelector(".like-slot"), n = slot ? Number(slot.dataset.shown) : NaN;
+    return slot && slot.dataset.shown !== undefined && slot.dataset.shown !== "" && isFinite(n) ? n : c.likes;
+  }
   if (tools) {
     var asked = new URLSearchParams(location.search);
-    if (ORDERS[asked.get("sort")]) sortBy.value = asked.get("sort");
+    sortBy.value = ORDERS[asked.get("sort")] ? asked.get("sort") : "newest";
     filter.value = text(asked.get("by")).slice(0, 64);
     clearer.hidden = !filter.value;
   }
@@ -435,22 +447,31 @@
     if (sortBy.value !== "newest") q.set("sort", sortBy.value); else q.delete("sort");
     if (by) q.set("by", by); else q.delete("by");
     var s = q.toString();
+    clearTimeout(tools.retry);
     try { history.replaceState(history.state, "", location.pathname + (s ? "?" + s : "") + location.hash); }
-    catch (e) { /* too many changes in a row (Safari): the next one catches up */ }
+    catch (e) { tools.retry = setTimeout(remember, 2000); }  // too many changes in a row (Safari): once more later
   }
   // Draw the gallery's view: its cards in the order picked, those whose gamertag has the filter's
   // text shown, the count, and the line for a filter nothing matches
-  function view() {
-    if (!tools || !tools.cards) return;
-    var q = fold(filter.value.trim()), order = ORDERS[sortBy.value] || ORDERS.newest, shown = 0;
-    var sorted = tools.cards.slice().sort(order);
-    sorted.forEach(function (c) {
+  // (the cards move only when the order is another: not for each letter typed)
+  function view(resort) {
+    if (!tools) return 0;
+    clearer.hidden = !filter.value || filter.disabled;
+    if (!tools.cards) return 0;
+    var q = fold(filter.value.trim()), shown = 0;
+    var key = ORDERS[sortBy.value] ? sortBy.value : "newest";
+    if (resort || key !== tools.order) {
+      tools.order = key;
+      if (key === "liked") tools.cards.forEach(function (c) { c.shown = liked(c); });
+      var order = key === "liked" ? function (a, b) { return b.shown - a.shown || a.at - b.at; } : ORDERS[key];
+      gallery.append.apply(gallery, tools.cards.slice().sort(order).map(function (c) { return c.li; }));
+    }
+    tools.cards.forEach(function (c) {
       c.li.hidden = !!q && c.tag.indexOf(q) < 0;
       if (!c.li.hidden) shown++;
     });
-    gallery.append.apply(gallery, sorted.map(function (c) { return c.li; }));
-    clearer.hidden = !filter.value;
-    if (counter) counter.textContent = !tools.total ? "" : shown === tools.total ? howMany(tools.total) : shown + " of " + howMany(tools.total);
+    if (counter) counter.textContent = !tools.total ? "" : shown === tools.total ? howMany(tools.total)
+      : shown.toLocaleString("en") + " of " + howMany(tools.total);
     if (noneState && tools.total) {
       noneState.hidden = shown > 0;
       noneState.classList.remove("error");
@@ -483,10 +504,10 @@
       return { li: li, at: at, tag: fold(text(p.gamertag)), likes: likesOf(p) || 0 };
     });
     tools.total = tools.cards.length;
-    var liked = sortBy.querySelector('option[value="liked"]');
-    if (!withLikes && liked) {
+    var option = sortBy.querySelector('option[value="liked"]');
+    if (!withLikes && option) {
       var was = sortBy.value === "liked";
-      liked.remove();
+      option.remove();
       if (was) sortBy.value = "newest";
     }
     var seen = {}, tags = [];
@@ -496,6 +517,7 @@
     });
     tags.sort(function (a, b) { return fold(a) < fold(b) ? -1 : fold(a) > fold(b) ? 1 : 0; });
     if (suggest) suggest.replaceChildren.apply(suggest, tags.map(function (t) { var o = document.createElement("option"); o.value = t; return o; }));
+    tools.order = null;
     view();
     remember();
   }
@@ -504,6 +526,10 @@
     filter.addEventListener("input", function () { changed(true); });
     filter.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && filter.value) { e.preventDefault(); filter.value = ""; changed(false); }
+    });
+    // a signed-in visitor's like totals are in (likes.js): Most liked follows them
+    document.addEventListener("likes:drawn", function (e) {
+      if (e.detail && e.detail.kind === "photo" && tools.cards && sortBy.value === "liked") view(true);
     });
     clearer.addEventListener("click", function () {
       filter.value = "";
@@ -521,8 +547,9 @@
     if (!gallery) return;
     var li = m && document.getElementById("photo-" + m[1]);
     if (li && li.hidden && tools && gallery.contains(li)) {
-      filter.value = "";
-      changed(false);
+      filter.value = "";  // quietly: the viewer opening is what a screen reader hears next
+      view();
+      remember();
     }
     var b = li && gallery.contains(li) ? li.querySelector("button[data-full]") : null;
     if (gone) {

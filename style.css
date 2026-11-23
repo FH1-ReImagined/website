@@ -814,11 +814,13 @@ html:not(.js) .photo-controls { display: none; }
 .filter-clear:hover { color: var(--orange); background: rgba(241, 227, 206, .08); }
 .filter-clear:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
 .filter-clear[hidden] { display: none; }
-.photo-count { margin: 0 2px 0 auto; padding-bottom: 11px; min-height: 1.4em; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.photo-count { margin: 0 2px 11px auto; min-height: 20px; color: var(--muted); font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 11em; text-align: right; }
 @media (max-width: 600px) {
   .photo-controls { margin-bottom: 16px; }
   .photo-find { flex: 1 1 100%; max-width: none; }
   .photo-order { flex: 1 1 auto; }
+  /* a row of its own, kept whatever the count says, so the photos never move down */
+  .photo-count { flex: 1 1 100%; min-width: 0; margin: 0 2px; text-align: left; }
 }
 /* While the photos or the designs load (aria-busy, in the page and taken off by photos.js and
    designs.js) the "Loading..." line keeps a screen of room below it, and a player's page and the

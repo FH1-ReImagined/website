@@ -544,6 +544,22 @@ SORT_TEST = r"""
   var q = new URLSearchParams(location.search), out = {steps: {}};
   var list = document.getElementById("photos");
   out.topBefore = Math.round(list.getBoundingClientRect().top + scrollY);
+  // ?top=<id>: a visitor who signed in, whose accounts service gives that photo 50 likes
+  if (q.get("top")) {
+    try { localStorage.setItem("fh-signed-in", "1"); } catch (e) { /* storage off */ }
+    var real = window.fetch;
+    window.fetch = function (url) {
+      var u = String(url), body = null, counts = {};
+      counts[q.get("top")] = 50;
+      if (u.indexOf("/api/likes/mine") === 0) body = { liked: [], own: [], counted: true };
+      if (u.indexOf("/api/likes/counts") === 0) body = { version: 1, kind: "photo", counts: counts };
+      if (!body) return real.apply(this, arguments);
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+    };
+    document.addEventListener("likes:drawn", function () {
+      setTimeout(function () { out.afterLikes = shown(); report(); }, 50);
+    });
+  }
   function report() {
     var pre = document.createElement("pre");
     pre.id = "test-results";
@@ -581,27 +597,18 @@ SORT_TEST = r"""
       out.filter = filter.value;
       out.tags = Array.prototype.map.call(document.querySelectorAll("#photo-tags option"), function (o) { return o.value; });
       out.overflow = document.documentElement.scrollWidth - innerWidth;
+      var sortBox = sort.getBoundingClientRect(), countBox = document.querySelector("[data-photos-count]").getBoundingClientRect();
+      out.countBelow = countBox.top >= sortBox.bottom;
+      out.disabled = [sort.disabled, filter.disabled];
       var box = document.getElementById("lightbox");
       out.open = box.open;
       snap("start");
+      if (q.get("top")) return;
       if (q.get("mode") !== "steps") return report();
       then(function () { pick("liked"); }, 300);
       then(function () { snap("liked"); pick("oldest"); }, 300);
       then(function () { snap("oldest"); pick("newest"); type("SYNTHETIC one"); }, 1000);
-      then(function () {
-        snap("filtered");
-        list.querySelector("li:not([hidden]) button[data-full]").click();
-      }, 300);
-      // (as in HASH_TEST: the close event is sent by the test when the headless browser's clock
-      // has not brought it)
-      var closes = 0;
-      box.addEventListener("close", function (e) { if (e.isTrusted) closes++; });
-      then(function () {
-        out.viewerCount = box.querySelector(".viewer-count").textContent;
-        box.close();
-      }, 200);
-      then(function () { if (!closes) box.dispatchEvent(new Event("close")); }, 100);
-      then(function () { type("nobody by that name"); }, 1000);
+      then(function () { snap("filtered"); type("nobody by that name"); }, 1000);
       then(function () { snap("nothing"); document.getElementById("photo-filter-clear").click(); }, 300);
       then(function () { snap("cleared"); type("seven"); }, 1000);
       then(function () {
@@ -615,8 +622,15 @@ SORT_TEST = r"""
         out.openLinked = box.open;
         var mid = box.querySelector('.viewer-slide[aria-hidden="false"] .viewer-hi');
         out.linkedSrc = mid && mid.getAttribute("src");
-        out.closes = closes;
-      }, 10);
+        // last, as a dialog's close event can come late in the headless browser: the viewer
+        // opened from a filtered list goes through what the filter shows only
+        box.close();
+        type("SYNTHETIC one");
+      }, 1000);
+      then(function () {
+        list.querySelector("li:not([hidden]) button[data-full]").click();
+      }, 300);
+      then(function () { out.viewerCount = box.querySelector(".viewer-count").textContent; }, 10);
       run();
     }, 300);
   });
@@ -753,14 +767,38 @@ def check_sort(browser, site, base, order, expect, profile):
     st = r.get("steps", {}).get("start", {})
     check(r.get("open") and st.get("ids") == list(reversed(order)) and st.get("hash") == f"#photo-{order[1]}"
           and st.get("search") == "?sort=oldest", f"a photo's link with a sort in the address opens the photo and keeps both ({st})")
-    for width in (320, 1280):
-        r = link_run(browser, base + "/sort-gallery.html", profile, width) or {}
+    for width, by in ((320, ""), (320, "synthetic"), (600, "synthetic"), (700, "synthetic"), (1280, ""), (1280, "synthetic")):
+        r = link_run(browser, base + "/sort-gallery.html" + (f"?by={by}" if by else ""), profile, width) or {}
         check(r.get("overflow") == 0 and r.get("topBefore") == r.get("topAfter") and r.get("topBefore"),
-              f"{width} px wide: nothing wider than the page, and the photos start where they started before they came in "
-              f"({r.get('overflow')}, {r.get('topBefore')} -> {r.get('topAfter')})")
+              f"{width} px wide{', filtered' if by else ''}: nothing wider than the page, and the photos start where they "
+              f"started before they came in ({r.get('overflow')}, {r.get('topBefore')} -> {r.get('topAfter')})")
+        if width <= 600:
+            check(r.get("countBelow"), f"{width} px wide: the count has a row of its own (so a long count moves nothing)")
+
+    # a visitor who signed in: Most liked follows the totals the accounts service gives the cards
+    last = order[-1]
+    r = link_run(browser, base + f"/sort-gallery.html?sort=liked&top={last}", profile) or {}
+    check((r.get("afterLikes") or [None])[0] == last,
+          f"signed in: Most liked sorts again by the totals the cards show ({(r.get('afterLikes') or [None])[0]} first, want {last})")
+
+    # some photos without a total (as the live feed's newest have none): they count as 0
+    saved = (site / "data" / "gallery.json").read_text(encoding="utf-8")
+    some = json.loads(saved)
+    top = max(order, key=lambda i: (likes[i], -order.index(i)))
+    for p in some["photos"]:
+        if p["id"] == top or p["id"] == order[-1]:
+            p.pop("likes", None)
+    (site / "data" / "gallery.json").write_text(json.dumps(some))
+    try:
+        mixed = sorted(order, key=lambda i: (-(0 if i in (top, order[-1]) else likes[i]), order.index(i)))
+        r = link_run(browser, base + "/sort-gallery.html?sort=liked", profile) or {}
+        st = r.get("steps", {}).get("start", {})
+        check(r.get("options") == ["newest", "liked", "oldest"] and r.get("sort") == "liked" and st.get("ids") == mixed,
+              f"photos without a like total sort as 0, newest first among equals ({st.get('ids')})")
+    finally:
+        (site / "data" / "gallery.json").write_text(saved)
 
     # a build without like totals: no Most liked, and ?sort=liked shows the newest first
-    saved = (site / "data" / "gallery.json").read_text(encoding="utf-8")
     bare = json.loads(saved)
     for p in bare["photos"]:
         p.pop("likes", None)
@@ -770,6 +808,10 @@ def check_sort(browser, site, base, order, expect, profile):
         st = r.get("steps", {}).get("start", {})
         check(r.get("options") == ["newest", "oldest"] and r.get("sort") == "newest" and st.get("ids") == list(order)
               and st.get("search") == "", f"no like totals: no Most liked, and ?sort=liked shows the newest first ({r.get('options')}, {st})")
+        # no photos at all: the controls stay where they are, switched off
+        (site / "data" / "gallery.json").write_text(json.dumps({"version": 1, "generated": NOW, "photos": []}))
+        r = link_run(browser, base + "/sort-gallery.html", profile) or {}
+        check(r.get("disabled") == [True, True], f"no photos: the sort and the filter are switched off ({r.get('disabled')})")
     finally:
         (site / "data" / "gallery.json").write_text(saved)
 

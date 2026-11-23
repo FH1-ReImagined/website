@@ -150,6 +150,7 @@
   function draw(s, st) {
     var kind = s.dataset.kind, id = s.dataset.id;
     var n = st.counts ? count(st.counts[id] || 0) : (s.dataset.likes !== undefined ? count(Number(s.dataset.likes)) : null);
+    s.dataset.shown = n === null ? "" : String(n);  // the total shown (photos.js sorts by it)
     s.textContent = "";
     if (st.mode === "linked" && st.own[id]) {
       if (n === null) return;
@@ -233,7 +234,10 @@
       var mine = slots.filter(function (s) { return s.dataset.kind === kind; });
       mine.forEach(function (s) { draw(s, { mode: "anon" }); });  // the built totals at once
       state(kind).then(function (st) {
-        if (st.mode !== "anon" || st.counts) mine.forEach(function (s) { if (s.isConnected) draw(s, st); });
+        if (st.mode !== "anon" || st.counts) {
+          mine.forEach(function (s) { if (s.isConnected) draw(s, st); });
+          document.dispatchEvent(new CustomEvent("likes:drawn", { detail: { kind: kind } }));
+        }
       });
     });
   }
