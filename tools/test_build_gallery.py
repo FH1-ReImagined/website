@@ -19,6 +19,9 @@ player's photos only, with their gamertag and totals. A link to one photo
 (gallery.html#photo-<id>) opens the photos page at it, in the viewer; one to a photo the site no
 longer has says so; the viewer's Copy link and Share give that link from every page (and nothing
 for a picture that is not a community photo), and fit beside the close button on a phone.
+gallery.html's sort (newest, most liked, oldest) and gamertag filter: each order, the address
+(?sort=, ?by=, beside a photo's link), the count, the viewer, clearing, the suggestions, no layout
+jump at 320 and 1280 px, and no Most liked for a build without like totals.
 
   python3 tools/test_build_gallery.py                # needs Pillow (tools/requirements.txt)
   python3 tools/test_build_gallery.py --serve 8000   # then serve the fixture site for a look
@@ -532,6 +535,95 @@ HASH_TEST = r"""
 """
 
 
+# gallery.html's sort and gamertag filter, after the photos are shown: each order and the address
+# it writes, a filter (any case) with its count and the viewer going through only what it shows, a
+# filter nothing matches, the clear button and Escape, the suggestions, a photo's link that the
+# filter hides, and where the list sits before and after the photos come in (nothing jumps).
+SORT_TEST = r"""
+(function () {
+  var q = new URLSearchParams(location.search), out = {steps: {}};
+  var list = document.getElementById("photos");
+  out.topBefore = Math.round(list.getBoundingClientRect().top + scrollY);
+  function report() {
+    var pre = document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify(out);
+    document.body.append(pre);
+  }
+  function shown() {
+    return Array.prototype.filter.call(list.children, function (li) { return !li.hidden && getComputedStyle(li).display !== "none"; })
+      .map(function (li) { return li.id.slice(6); });
+  }
+  function snap(name) {
+    var none = document.querySelector("[data-photos-none]");
+    out.steps[name] = { ids: shown(), search: location.search, hash: location.hash,
+      count: document.querySelector("[data-photos-count]").textContent,
+      said: document.querySelector("[data-photos-said]").textContent,
+      none: none.hidden ? "" : none.textContent, clearShown: !document.getElementById("photo-filter-clear").hidden,
+      focusFilter: document.activeElement === document.getElementById("photo-filter") };
+  }
+  var steps = [];
+  function then(f, wait) { steps.push([f, wait || 50]); }
+  function run() {
+    var s = steps.shift();
+    if (!s) return report();
+    s[0]();
+    setTimeout(run, s[1]);
+  }
+  var sort = document.getElementById("photo-sort"), filter = document.getElementById("photo-filter");
+  function pick(v) { sort.value = v; sort.dispatchEvent(new Event("change")); }
+  function type(v) { filter.value = v; filter.dispatchEvent(new Event("input")); }
+  document.addEventListener("photos:shown", function () {
+    setTimeout(function () {
+      out.topAfter = Math.round(list.getBoundingClientRect().top + scrollY);
+      out.options = Array.prototype.map.call(sort.options, function (o) { return o.value; });
+      out.sort = sort.value;
+      out.filter = filter.value;
+      out.tags = Array.prototype.map.call(document.querySelectorAll("#photo-tags option"), function (o) { return o.value; });
+      out.overflow = document.documentElement.scrollWidth - innerWidth;
+      var box = document.getElementById("lightbox");
+      out.open = box.open;
+      snap("start");
+      if (q.get("mode") !== "steps") return report();
+      then(function () { pick("liked"); }, 300);
+      then(function () { snap("liked"); pick("oldest"); }, 300);
+      then(function () { snap("oldest"); pick("newest"); type("SYNTHETIC one"); }, 1000);
+      then(function () {
+        snap("filtered");
+        list.querySelector("li:not([hidden]) button[data-full]").click();
+      }, 300);
+      // (as in HASH_TEST: the close event is sent by the test when the headless browser's clock
+      // has not brought it)
+      var closes = 0;
+      box.addEventListener("close", function (e) { if (e.isTrusted) closes++; });
+      then(function () {
+        out.viewerCount = box.querySelector(".viewer-count").textContent;
+        box.close();
+      }, 200);
+      then(function () { if (!closes) box.dispatchEvent(new Event("close")); }, 100);
+      then(function () { type("nobody by that name"); }, 1000);
+      then(function () { snap("nothing"); document.getElementById("photo-filter-clear").click(); }, 300);
+      then(function () { snap("cleared"); type("seven"); }, 1000);
+      then(function () {
+        snap("seven");
+        filter.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      }, 300);
+      then(function () { snap("escaped"); type("seven"); }, 1000);
+      then(function () { location.hash = "#photo-" + q.get("other"); }, 400);
+      then(function () {
+        snap("linked");
+        out.openLinked = box.open;
+        var mid = box.querySelector('.viewer-slide[aria-hidden="false"] .viewer-hi');
+        out.linkedSrc = mid && mid.getAttribute("src");
+        out.closes = closes;
+      }, 10);
+      run();
+    }, 300);
+  });
+})();
+"""
+
+
 def link_run(browser, url, profile, width=None):
     profile = Path(tempfile.mkdtemp(dir=profile))
     args = browser_args(browser, profile) + ([f"--window-size={width},800"] if width else []) + ["--dump-dom", url]
@@ -610,6 +702,78 @@ def check_links(browser, site, base, order, expect, profile):
             check(bool(r) and r.get("buttons") == ["Share"], "on a phone with a share sheet only Share shows (the sheet has its own copy)")
 
 
+def check_sort(browser, site, base, order, expect, profile):
+    """gallery.html's sort (newest, most liked, oldest) and filter by gamertag."""
+    doc = gallery(site)
+    tag = {p["id"]: p["gamertag"] for p in doc["photos"]}
+    likes = {p["id"]: p.get("likes", 0) for p in doc["photos"]}
+    liked = sorted(order, key=lambda i: (-likes[i], order.index(i)))
+    ones = [i for i in order if "synthetic one" in tag[i].lower()]
+    seven = [i for i in order if "seven" in tag[i].lower()]
+    (site / "sort-test.js").write_text(SORT_TEST)
+    text = (site / "gallery.html").read_text(encoding="utf-8")
+    (site / "sort-gallery.html").write_text(text.replace('<script src="photos.js"></script>',
+                                                         '<script src="photos.js"></script>\n<script src="sort-test.js"></script>'))
+    other = next(i for i in order if i not in seven)
+    r = link_run(browser, base + f"/sort-gallery.html?mode=steps&other={other}", profile) or {}
+    st = r.get("steps", {})
+    check(r.get("options") == ["newest", "liked", "oldest"] and st.get("start", {}).get("ids") == list(order)
+          and st["start"]["search"] == "?mode=steps&other=" + other and st["start"]["count"] == f"{len(order)} photos",
+          f"gallery.html: Newest first, Most liked and Oldest first, newest first to start, with the count ({r.get('options')})")
+    check(st.get("liked", {}).get("ids") == liked and "sort=liked" in st["liked"]["search"],
+          f"Most liked: the most liked first, the newest first among equals, and ?sort=liked in the address ({st.get('liked')})")
+    check(st.get("oldest", {}).get("ids") == list(reversed(order)) and "sort=oldest" in st["oldest"]["search"],
+          "Oldest first: the order turned round, and ?sort=oldest in the address")
+    f = st.get("filtered", {})
+    check(f.get("ids") == ones and "sort=" not in f.get("search", "x") and "by=SYNTHETIC+one" in f.get("search", "")
+          and f.get("count") == f"{len(ones)} of {len(order)} photos" and f.get("clearShown"),
+          f"the gamertag filter (any case) shows only those players' photos, says how many, and goes in the address ({f})")
+    check(f"{len(ones)} photos by a gamertag" in f.get("said", ""), "and tells a screen reader how many")
+    check(r.get("viewerCount") == f"1 / {len(ones)}", f"the viewer goes through the photos the filter shows only ({r.get('viewerCount')})")
+    n = st.get("nothing", {})
+    check(n.get("ids") == [] and n.get("none") == "No photos by a gamertag like that." and n.get("count") == f"0 of {len(order)} photos",
+          f"a filter nothing matches says so ({n})")
+    c = st.get("cleared", {})
+    check(c.get("ids") == list(order) and "by=" not in c.get("search", "by=") and not c.get("none") and not c.get("clearShown")
+          and c.get("focusFilter"), f"the clear button shows them all again, leaves the focus in the filter and the address clean ({c})")
+    check(st.get("seven", {}).get("ids") == seven and st.get("escaped", {}).get("ids") == list(order)
+          and "by=" not in st.get("escaped", {}).get("search", "by="), "Escape in the filter clears it")
+    k = st.get("linked", {})
+    check(r.get("openLinked") and r.get("linkedSrc") == f"photos/{other}.jpg" and k.get("hash") == f"#photo-{other}"
+          and k.get("ids") == list(order) and "by=" not in k.get("search", "by="),
+          f"a photo's link the filter hides clears the filter and opens the photo ({k})")
+    check(r.get("tags") == sorted(set(tag.values()), key=str.lower), f"the suggestions are the gamertags on the page, once each ({r.get('tags')})")
+
+    # an address with a sort and a filter in it, and a photo's link beside them
+    r = link_run(browser, base + "/sort-gallery.html?sort=liked&by=synthetic%20one", profile) or {}
+    st = r.get("steps", {}).get("start", {})
+    check(r.get("sort") == "liked" and r.get("filter") == "synthetic one" and st.get("ids") == [i for i in liked if i in ones],
+          f"?sort=liked&by=<text> opens the page with that view ({r.get('sort')}, {r.get('filter')}, {st.get('ids')})")
+    r = link_run(browser, base + f"/sort-gallery.html?sort=oldest#photo-{order[1]}", profile) or {}
+    st = r.get("steps", {}).get("start", {})
+    check(r.get("open") and st.get("ids") == list(reversed(order)) and st.get("hash") == f"#photo-{order[1]}"
+          and st.get("search") == "?sort=oldest", f"a photo's link with a sort in the address opens the photo and keeps both ({st})")
+    for width in (320, 1280):
+        r = link_run(browser, base + "/sort-gallery.html", profile, width) or {}
+        check(r.get("overflow") == 0 and r.get("topBefore") == r.get("topAfter") and r.get("topBefore"),
+              f"{width} px wide: nothing wider than the page, and the photos start where they started before they came in "
+              f"({r.get('overflow')}, {r.get('topBefore')} -> {r.get('topAfter')})")
+
+    # a build without like totals: no Most liked, and ?sort=liked shows the newest first
+    saved = (site / "data" / "gallery.json").read_text(encoding="utf-8")
+    bare = json.loads(saved)
+    for p in bare["photos"]:
+        p.pop("likes", None)
+    (site / "data" / "gallery.json").write_text(json.dumps(bare))
+    try:
+        r = link_run(browser, base + "/sort-gallery.html?sort=liked", profile) or {}
+        st = r.get("steps", {}).get("start", {})
+        check(r.get("options") == ["newest", "oldest"] and r.get("sort") == "newest" and st.get("ids") == list(order)
+              and st.get("search") == "", f"no like totals: no Most liked, and ?sort=liked shows the newest first ({r.get('options')}, {st})")
+    finally:
+        (site / "data" / "gallery.json").write_text(saved)
+
+
 def check_pages(browser, site, order, expect, profile):
     httpd, base = serve_dir(site)
     try:
@@ -660,6 +824,7 @@ def check_pages(browser, site, order, expect, profile):
         check(not any(t == "img" and ("onerror" in a or a.get("src") == "x") for t, a in page.tags),
               "gallery.html: the player's markup is not turned into elements")
         check_links(browser, site, base, order, expect, profile)
+        check_sort(browser, site, base, order, expect, profile)
 
         (site / "data" / "gallery.json").write_text(json.dumps({"version": 1, "generated": NOW, "photos": []}))
         index = dom_of(browser, base + "/index.html", profile)
