@@ -21,6 +21,9 @@
 // that photo, in the viewer, and says so when the photo is not on the site. The viewer shows
 // a community photo (a button with data-photo) with "Copy link" and, where the browser has a share
 // sheet, "Share"; both give the photos page's link, also from the front page and a player's page.
+//
+// gallery.html also has a sort (newest first, most liked, oldest first) and a filter by gamertag,
+// kept in the address (?sort= and ?by=, beside the photo's #photo-<id>).
 (function () {
   "use strict";
 
@@ -302,7 +305,10 @@
 
     openAt = function (b) {
       var list = b.closest("ul, ol") || document.body;
-      var all = Array.prototype.filter.call(list.querySelectorAll("button[data-full]"), function (x) { return !box.contains(x); });
+      // (not the photos the gamertag filter hides on gallery.html)
+      var all = Array.prototype.filter.call(list.querySelectorAll("button[data-full]"), function (x) {
+        return !box.contains(x) && !x.closest("li[hidden]");
+      });
       items = all.map(itemOf);
       show(Math.max(0, all.indexOf(b)));
       document.documentElement.classList.add("viewer-open");
@@ -391,18 +397,160 @@
       s.classList.toggle("error", !!failed);
     });
     if (window.FHLikes) window.FHLikes.fill(document);
+    if (tools) {  // nothing to sort or filter: the controls stay in place, switched off
+      sortBy.disabled = filter.disabled = !!failed || !photos.length;
+      clearer.hidden = !filter.value || filter.disabled;
+    }
+    if (!failed) arrange(photos);
     if (!failed) opened(photos.length > 0);
     document.dispatchEvent(new Event("photos:shown"));
   }
 
-  // A link to one photo (gallery.html#photo-<id>): the photos page scrolls to it and opens it in
-  // the viewer, or says above the photos that it is not on the site right now.
+  // gallery.html's sort (newest first, most liked, oldest first) and filter by gamertag, over its
+  // list only. Both are kept in the address, ?sort=liked|oldest and ?by=<text>, so a link gives
+  // the same view; the fragment stays the viewer's (#photo-<id>). The cards are drawn once (their
+  // likes filled in) and then only moved, or hidden by the filter, so nothing loads again. "Most
+  // liked" is offered when the build has like totals ("likes"; a photo without one, such as one
+  // only the live feed lists yet, counts as 0): when it has none (the accounts service unset or
+  // down) the option is taken out, and a ?sort=liked address shows the newest first. It orders by
+  // the totals the cards show: for a visitor who signed in, those likes.js got from the accounts
+  // service (the list is sorted again once they are in). The suggestions are the gamertags of the
+  // photos on the page (player text: set as a value only).
   var gallery = lists.filter(function (l) { return l.dataset.photos === "all" && !l.hasAttribute("data-photos-owner"); })[0];
+  var sortBy = document.getElementById("photo-sort"), filter = document.getElementById("photo-filter");
+  var clearer = document.getElementById("photo-filter-clear"), suggest = document.getElementById("photo-tags");
+  var counter = document.querySelector("[data-photos-count]"), said = document.querySelector("[data-photos-said]");
+  var noneState = document.querySelector("[data-photos-none]");
+  var tools = gallery && sortBy && filter ? { cards: null, timer: 0, sayTimer: 0, retry: 0, total: 0, order: null } : null;
+  var ORDERS = {
+    newest: function (a, b) { return a.at - b.at; },
+    liked: function (a, b) { return b.likes - a.likes || a.at - b.at; },
+    oldest: function (a, b) { return b.at - a.at; }
+  };
+  function fold(s) { return s.normalize ? s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : s.toLowerCase(); }
+  function likesOf(p) { return typeof p.likes === "number" && isFinite(p.likes) && p.likes >= 0 ? p.likes : null; }
+  function howMany(n) { return n.toLocaleString("en") + (n === 1 ? " photo" : " photos"); }
+  // a card's like total: the one its like slot shows (likes.js), else the build's
+  function liked(c) {
+    var slot = c.li.querySelector(".like-slot"), n = slot ? Number(slot.dataset.shown) : NaN;
+    return slot && slot.dataset.shown !== undefined && slot.dataset.shown !== "" && isFinite(n) ? n : c.likes;
+  }
+  if (tools) {
+    var asked = new URLSearchParams(location.search);
+    sortBy.value = ORDERS[asked.get("sort")] ? asked.get("sort") : "newest";
+    filter.value = text(asked.get("by")).slice(0, 64);
+    clearer.hidden = !filter.value;
+  }
+  // The address for the view shown: other parts of it are kept as they are
+  function remember() {
+    var q = new URLSearchParams(location.search), by = filter.value.trim();
+    if (sortBy.value !== "newest") q.set("sort", sortBy.value); else q.delete("sort");
+    if (by) q.set("by", by); else q.delete("by");
+    var s = q.toString();
+    clearTimeout(tools.retry);
+    try { history.replaceState(history.state, "", location.pathname + (s ? "?" + s : "") + location.hash); }
+    catch (e) { tools.retry = setTimeout(remember, 2000); }  // too many changes in a row (Safari): once more later
+  }
+  // Draw the gallery's view: its cards in the order picked, those whose gamertag has the filter's
+  // text shown, the count, and the line for a filter nothing matches
+  // (the cards move only when the order is another: not for each letter typed)
+  function view(resort) {
+    if (!tools) return 0;
+    clearer.hidden = !filter.value || filter.disabled;
+    if (!tools.cards) return 0;
+    var q = fold(filter.value.trim()), shown = 0;
+    var key = ORDERS[sortBy.value] ? sortBy.value : "newest";
+    if (resort || key !== tools.order) {
+      tools.order = key;
+      if (key === "liked") tools.cards.forEach(function (c) { c.shown = liked(c); });
+      var order = key === "liked" ? function (a, b) { return b.shown - a.shown || a.at - b.at; } : ORDERS[key];
+      gallery.append.apply(gallery, tools.cards.slice().sort(order).map(function (c) { return c.li; }));
+    }
+    tools.cards.forEach(function (c) {
+      c.li.hidden = !!q && c.tag.indexOf(q) < 0;
+      if (!c.li.hidden) shown++;
+    });
+    if (counter) counter.textContent = !tools.total ? "" : shown === tools.total ? howMany(tools.total)
+      : shown.toLocaleString("en") + " of " + howMany(tools.total);
+    if (noneState && tools.total) {
+      noneState.hidden = shown > 0;
+      noneState.classList.remove("error");
+      noneState.textContent = shown ? "" : noneState.dataset.photosNone;
+    }
+    return shown;
+  }
+  // After the visitor changed the view: the address (a moment later while they type) and, for a
+  // screen reader, how many photos there are now
+  function changed(typing) {
+    var shown = view();
+    clearTimeout(tools.timer);
+    if (typing) tools.timer = setTimeout(remember, 400); else remember();
+    clearTimeout(tools.sayTimer);
+    tools.sayTimer = setTimeout(function () {
+      if (said && tools.cards) said.textContent = !filter.value.trim() ? howMany(tools.total) + ", " + sortBy.selectedOptions[0].text.toLowerCase() + "."
+        : shown ? howMany(shown) + " by a gamertag with \u201c" + filter.value.trim() + "\u201d."
+          : noneState ? noneState.dataset.photosNone : "";
+    }, typing ? 700 : 100);
+  }
+  // The photos are in: keep their cards, take out "Most liked" without like totals, offer the
+  // gamertags, then draw the view the address asked for
+  function arrange(list) {
+    if (!tools) return;
+    var byId = {};
+    list.forEach(function (p) { byId[p.id] = p; });
+    var withLikes = list.some(function (p) { return likesOf(p) !== null; });
+    tools.cards = Array.prototype.map.call(gallery.children, function (li, at) {
+      var p = byId[li.id.slice(6)] || {};
+      return { li: li, at: at, tag: fold(text(p.gamertag)), likes: likesOf(p) || 0 };
+    });
+    tools.total = tools.cards.length;
+    var option = sortBy.querySelector('option[value="liked"]');
+    if (!withLikes && option) {
+      var was = sortBy.value === "liked";
+      option.remove();
+      if (was) sortBy.value = "newest";
+    }
+    var seen = {}, tags = [];
+    list.forEach(function (p) {
+      var t = text(p.gamertag), k = fold(t);
+      if (t && !seen[k]) { seen[k] = true; tags.push(t); }
+    });
+    tags.sort(function (a, b) { return fold(a) < fold(b) ? -1 : fold(a) > fold(b) ? 1 : 0; });
+    if (suggest) suggest.replaceChildren.apply(suggest, tags.map(function (t) { var o = document.createElement("option"); o.value = t; return o; }));
+    tools.order = null;
+    view();
+    remember();
+  }
+  if (tools) {
+    sortBy.addEventListener("change", function () { changed(false); });
+    filter.addEventListener("input", function () { changed(true); });
+    filter.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && filter.value) { e.preventDefault(); filter.value = ""; changed(false); }
+    });
+    // a signed-in visitor's like totals are in (likes.js): Most liked follows them
+    document.addEventListener("likes:drawn", function (e) {
+      if (e.detail && e.detail.kind === "photo" && tools.cards && sortBy.value === "liked") view(true);
+    });
+    clearer.addEventListener("click", function () {
+      filter.value = "";
+      filter.focus();  // the button goes away: the focus stays in the filter
+      changed(false);
+    });
+  }
+
+  // A link to one photo (gallery.html#photo-<id>): the photos page scrolls to it and opens it in
+  // the viewer, or says above the photos that it is not on the site right now. A photo the
+  // gamertag filter hides is shown again: the filter is cleared.
   var gone = document.querySelector("[data-photo-gone]");  // gallery.html's status line for it
   function opened(any) {
     var m = /^#photo-([A-Za-z2-7]{12})$/.exec(location.hash);
     if (!gallery) return;
     var li = m && document.getElementById("photo-" + m[1]);
+    if (li && li.hidden && tools && gallery.contains(li)) {
+      filter.value = "";  // quietly: the viewer opening is what a screen reader hears next
+      view();
+      remember();
+    }
     var b = li && gallery.contains(li) ? li.querySelector("button[data-full]") : null;
     if (gone) {
       gone.hidden = !m || !!b;

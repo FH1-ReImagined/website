@@ -69,12 +69,33 @@
   <div class="page-head">
     <p class="kicker">Community &middot; Photo mode</p>
     <h1><span class="h1-big">Photos</span></h1>
-    <p class="aside">Shots players took in the game's photo mode, newest first. Share yours from photo mode in the game. Open a photo to share its link.</p>
+    <p class="aside">Shots players took in the game's photo mode, newest first. Sort them, or find a player's by gamertag. Share yours from photo mode in the game. Open a photo to share its link.</p>
+  </div>
+
+  <div class="photo-controls" role="search" aria-label="Sort and filter the photos">
+    <div class="photo-field photo-find">
+      <label for="photo-filter">Gamertag</label>
+      <div class="filter-box">
+        <input type="search" id="photo-filter" list="photo-tags" placeholder="One player's photos" autocomplete="off" spellcheck="false" autocapitalize="off" aria-controls="photos">
+        <button type="button" class="filter-clear" id="photo-filter-clear" aria-label="Clear the gamertag" hidden>&times;</button>
+      </div>
+      <datalist id="photo-tags"></datalist>
+    </div>
+    <div class="photo-field photo-order">
+      <label for="photo-sort">Sort by</label>
+      <select id="photo-sort" aria-controls="photos" autocomplete="off">
+        <option value="newest">Newest first</option>
+        <option value="liked">Most liked</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </div>
+    <p class="photo-count" data-photos-count></p>
+    <p class="sr-only" data-photos-said role="status"></p>
   </div>
 
   <p class="photo-state photo-gone" data-photo-gone role="status" hidden></p>
   <ul class="shots photos all" id="photos" data-photos="all" data-photos-live aria-label="Community photos" aria-busy="true"></ul>
-  <p class="photo-state" data-photos-state="No photos yet. Share yours from photo mode in the game.">Loading the photos...</p>
+  <p class="photo-state" data-photos-state="No photos yet. Share yours from photo mode in the game." data-photos-none="No photos by a gamertag like that.">Loading the photos...</p>
   <noscript><p class="photo-state error">The photos need JavaScript.</p></noscript>
 
   <section class="panel rules" aria-labelledby="rules">
