@@ -479,6 +479,59 @@ LINK_TEST = r"""
 """
 
 
+# After the photos are shown: a link to a photo opened in the same page (hashchange) opens the
+# viewer at it; closing gives the focus back to its button and takes the photo out of the
+# address; a link to a missing photo, then to another part of the page, shows and hides the note.
+HASH_TEST = r"""
+(function () {
+  var q = new URLSearchParams(location.search), out = {};
+  function report() {
+    var pre = document.createElement("pre");
+    pre.id = "test-results";
+    pre.textContent = JSON.stringify(out);
+    document.body.append(pre);
+  }
+  document.addEventListener("photos:shown", function () {
+    setTimeout(function () {
+      var box = document.getElementById("lightbox"), gone = document.querySelector("[data-photo-gone]");
+      location.hash = "#photo-" + q.get("id");
+      setTimeout(function () {
+        out.open = box.open;
+        var mid = box.querySelector('.viewer-slide[aria-hidden="false"] .viewer-hi');
+        out.src = mid && mid.getAttribute("src");
+        // The headless browser's virtual clock often stops before a dialog's close event comes, so
+        // when it has not come after a while, the test sends one itself: photos.js's listener runs
+        // the same either way.
+        var seen = false;
+        box.addEventListener("close", function () { seen = true; }, { once: true });
+        box.close();
+        setTimeout(function () {
+          out.closeEvent = seen;
+          if (!seen) box.dispatchEvent(new Event("close"));
+          setTimeout(after, 50);
+        }, 200);
+      }, 300);
+      function after() {
+          var b = document.querySelector("#photo-" + q.get("id") + " button[data-full]");
+          out.focus = document.activeElement === b;
+          out.hash = location.hash;
+          location.hash = "#photo-AAAAAAAAAAAA";
+          setTimeout(function () {
+            out.goneShown = !gone.hidden && /isn't on the site/.test(gone.textContent);
+            out.openAfterGone = box.open;
+            location.hash = "#rules";
+            setTimeout(function () {
+              out.goneAfterRules = !gone.hidden;
+              report();
+            }, 100);
+          }, 100);
+      }
+    }, 300);
+  });
+})();
+"""
+
+
 def link_run(browser, url, profile, width=None):
     profile = Path(tempfile.mkdtemp(dir=profile))
     args = browser_args(browser, profile) + ([f"--window-size={width},800"] if width else []) + ["--dump-dom", url]
@@ -506,12 +559,24 @@ def check_links(browser, site, base, order, expect, profile):
     box = next((a for t, a in page.tags if t == "dialog" and a.get("id") == "lightbox"), {})
     gone = next((a for t, a in page.tags if t == "p" and "photo-gone" in a.get("class", "")), None)
     check("open" not in box and gone is not None and "hidden" not in gone
-          and any("no longer on the site" in x and "Here are the others" in x for x in page.texts),
+          and any("isn't on the site" in x and "Here are the others" in x for x in page.texts),
           "a link to a photo the site no longer has says so above the photos, and opens nothing")
     page = dom_of(browser, base + "/gallery.html#photos", profile)
-    check(not any(t == "p" and "photo-gone" in a.get("class", "") for t, a in page.tags), "another address shows no such note")
+    gone = next((a for t, a in page.tags if t == "p" and "photo-gone" in a.get("class", "")), None)
+    check(gone is not None and "hidden" in gone, "another address shows no such note")
 
     (site / "link-test.js").write_text(LINK_TEST)
+    (site / "hash-test.js").write_text(HASH_TEST)
+    text = (site / "gallery.html").read_text(encoding="utf-8")
+    (site / "hash-gallery.html").write_text(text.replace('<script src="photos.js"></script>',
+                                                         '<script src="photos.js"></script>\n<script src="hash-test.js"></script>'))
+    r = link_run(browser, base + f"/hash-gallery.html?id={order[1]}", profile)
+    check(bool(r) and r.get("open") and r.get("src") == f"photos/{order[1]}.jpg",
+          f"a photo's link followed on the photos page itself opens the viewer at it ({r})")
+    check(bool(r) and r.get("focus") and r.get("hash") == "",
+          "closing gives the focus back to the photo and takes the photo out of the address")
+    check(bool(r) and r.get("goneShown") and not r.get("openAfterGone") and not r.get("goneAfterRules"),
+          "then a missing photo's link shows the note, and a link to another part of the page hides it")
     for name in ("gallery", "index", "profile"):
         text = (site / f"{name}.html").read_text(encoding="utf-8")
         (site / f"link-{name}.html").write_text(text.replace('<script src="photos.js"></script>',

@@ -391,6 +391,7 @@ html.viewer-open { overflow: hidden; }
 }
 .viewer-share-btn:hover { background: rgba(228, 150, 87, .2); }
 .viewer-share-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+@media (pointer: coarse) { .viewer-share-btn { min-height: 44px; } }
 @media (max-width: 700px) {
   .viewer-stage, .player-stage { top: 64px; bottom: 96px; }
   .player-stage { padding: 0; }
@@ -399,7 +400,6 @@ html.viewer-open { overflow: hidden; }
   .viewer-nav { top: auto; bottom: 22px; margin-top: 0; width: 48px; height: 48px; }
   .viewer-cap { padding: 12px 72px calc(12px + env(safe-area-inset-bottom)); }
   .viewer-cap b { font-size: 20px; }
-  .viewer-share { top: 15px; }
   .viewer-share.has-native .viewer-copy { display: none; }
 }
 @media (pointer: coarse) and (min-width: 701px) { .viewer-nav { width: 58px; height: 58px; } }

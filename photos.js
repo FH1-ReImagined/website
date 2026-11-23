@@ -18,7 +18,7 @@
 // pictures change without sliding.
 //
 // Every community photo has a link of its own, gallery.html#photo-<id>: the photos page opens at
-// that photo, in the viewer, and says so when the photo is no longer on the site. The viewer shows
+// that photo, in the viewer, and says so when the photo is not on the site. The viewer shows
 // a community photo (a button with data-photo) with "Copy link" and, where the browser has a share
 // sheet, "Share"; both give the photos page's link, also from the front page and a player's page.
 (function () {
@@ -86,7 +86,9 @@
       share.append(native);
     }
     share.append(copy);
-    box.append(count, stage, prev, next, cap, share, said);
+    box.append(count, stage, prev, next, cap, said);
+    var closer = box.querySelector("form");
+    if (closer) closer.after(share); else box.append(share);
 
     var items = [], index = 0, moving = null;
 
@@ -191,20 +193,28 @@
     copy.addEventListener("click", function () {
       var it = items[index];
       if (!it || !it.id) return;
+      copyLink(it, true);
+    });
+    // Copy a photo's link; the button says so (seen) and the status line tells a screen reader,
+    // unless the viewer has moved on to another photo meanwhile
+    function copyLink(it, fromButton) {
       var url = photoLink(it.id);
       var done = function () {
-        copy.textContent = "Link copied";
+        if (items[index] !== it || !box.open) return;
+        if (fromButton) copy.textContent = "Link copied";
         said.textContent = "The photo's link is copied.";
         clearTimeout(copied);
         copied = setTimeout(function () { copy.textContent = "Copy link"; said.textContent = ""; }, 3000);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { prompt("Copy this link", url); });
       else prompt("Copy this link", url);
-    });
+    }
+    // the share sheet; when it cannot open (not when the visitor closed it), copy the link instead
     if (native) native.addEventListener("click", function () {
       var it = items[index];
       if (!it || !it.id) return;
-      navigator.share({ title: "A photo by " + it.tag + " in Forza Horizon 1: ReImagined", url: photoLink(it.id) }).catch(function () {});
+      navigator.share({ title: "A photo by " + it.tag + " in Forza Horizon 1: ReImagined", url: photoLink(it.id) })
+        .catch(function (e) { if (!e || e.name !== "AbortError") copyLink(it, false); });
     });
 
     prev.addEventListener("click", function () { go(-1); });
@@ -264,6 +274,8 @@
           e.target.classList.contains("viewer-box")) box.close();
     });
     box.addEventListener("close", function () {
+      // the address named the photo the viewer opened at: it no longer says which one is shown
+      if (/^#photo-/.test(location.hash) && history.replaceState) history.replaceState(null, "", location.pathname + location.search);
       finish();
       document.documentElement.classList.remove("viewer-open");
       var it = items[index];
@@ -384,24 +396,21 @@
   }
 
   // A link to one photo (gallery.html#photo-<id>): the photos page scrolls to it and opens it in
-  // the viewer, or says above the photos that it is no longer on the site.
+  // the viewer, or says above the photos that it is not on the site right now.
   var gallery = lists.filter(function (l) { return l.dataset.photos === "all" && !l.hasAttribute("data-photos-owner"); })[0];
-  var gone = null;
+  var gone = document.querySelector("[data-photo-gone]");  // gallery.html's status line for it
   function opened(any) {
     var m = /^#photo-([A-Za-z2-7]{12})$/.exec(location.hash);
-    if (!gallery || !m) return;
-    var li = document.getElementById("photo-" + m[1]);
+    if (!gallery) return;
+    var li = m && document.getElementById("photo-" + m[1]);
     var b = li && gallery.contains(li) ? li.querySelector("button[data-full]") : null;
-    if (!gone) {
-      gone = el("p", "", "photo-state photo-gone");
-      gone.setAttribute("role", "status");
-      gallery.parentNode.insertBefore(gone, gallery);
+    if (gone) {
+      gone.hidden = !m || !!b;
+      gone.textContent = !m || b ? "" : "That photo isn't on the site right now: its player may have deleted it, or it was taken down." +
+        (any ? " Here are the others." : "");
     }
-    gone.hidden = !!b;
-    gone.textContent = b ? "" : "The photo that link names is no longer on the site: its player deleted it, or it was removed." +
-      (any ? " Here are the others." : "");
     if (!b) return;
-    li.scrollIntoView({ block: "center" });
+    li.scrollIntoView({ block: "center", behavior: "instant" });
     if (openAt) openAt(b);
   }
   window.addEventListener("hashchange", function () {
