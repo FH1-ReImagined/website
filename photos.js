@@ -16,6 +16,11 @@
 // at once and the full picture fades in over it once it has loaded: a slide is emptied before it
 // gets a new picture, so a picture seen before never shows in its place. With reduced motion the
 // pictures change without sliding.
+//
+// Every community photo has a link of its own, gallery.html#photo-<id>: the photos page opens at
+// that photo, in the viewer, and says so when the photo is not on the site. The viewer shows
+// a community photo (a button with data-photo) with "Copy link" and, where the browser has a share
+// sheet, "Share"; both give the photos page's link, also from the front page and a player's page.
 (function () {
   "use strict";
 
@@ -26,8 +31,15 @@
     return e;
   }
 
+  var PHOTO_ID = /^[A-Za-z2-7]{12}$/;
+  var openAt = null;  // viewer(): opens the viewer at a picture button, as a click does
   var box = document.getElementById("lightbox");
   if (box && box.showModal) viewer(box);
+
+  // The photos page's link to a photo, whichever page shows it
+  function photoLink(id) {
+    return new URL("gallery.html#photo-" + id, location.href).href;
+  }
 
   function viewer(box) {
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -60,7 +72,23 @@
     next.setAttribute("aria-label", "Next photo");
     var cap = el("p", "", "viewer-cap"), capTitle = el("b"), capBy = el("span");
     cap.append(capTitle, capBy);
-    box.append(count, stage, prev, next, cap);
+    // a community photo's link: the share sheet where there is one, and Copy link
+    var share = el("div", "", "viewer-share"), said = el("p", "", "sr-only");
+    share.setAttribute("role", "group");
+    share.setAttribute("aria-label", "Share this photo");
+    said.setAttribute("role", "status");
+    var copy = el("button", "Copy link", "viewer-share-btn viewer-copy"), native = null, copied = 0;
+    copy.type = "button";
+    if (navigator.share) {
+      native = el("button", "Share", "viewer-share-btn");
+      native.type = "button";
+      share.classList.add("has-native");
+      share.append(native);
+    }
+    share.append(copy);
+    box.append(count, stage, prev, next, cap, said);
+    var closer = box.querySelector("form");
+    if (closer) closer.after(share); else box.append(share);
 
     var items = [], index = 0, moving = null;
 
@@ -107,6 +135,10 @@
       if (n > 1) count.append(el("b", String(index + 1)), document.createTextNode(" / " + n));
       capTitle.textContent = it ? it.title : "";
       capBy.textContent = it ? it.by : "";
+      share.hidden = !(it && it.id);
+      clearTimeout(copied);
+      copy.textContent = "Copy link";
+      said.textContent = "";
       prev.hidden = next.hidden = n < 2;
       prev.disabled = index <= 0;
       next.disabled = index >= n - 1;
@@ -157,6 +189,33 @@
       m.timer = setTimeout(m.done, 600);
       shift((-dir * 100) + "%", true);
     }
+
+    copy.addEventListener("click", function () {
+      var it = items[index];
+      if (!it || !it.id) return;
+      copyLink(it, true);
+    });
+    // Copy a photo's link; the button says so (seen) and the status line tells a screen reader,
+    // unless the viewer has moved on to another photo meanwhile
+    function copyLink(it, fromButton) {
+      var url = photoLink(it.id);
+      var done = function () {
+        if (items[index] !== it || !box.open) return;
+        if (fromButton) copy.textContent = "Link copied";
+        said.textContent = "The photo's link is copied.";
+        clearTimeout(copied);
+        copied = setTimeout(function () { copy.textContent = "Copy link"; said.textContent = ""; }, 3000);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { prompt("Copy this link", url); });
+      else prompt("Copy this link", url);
+    }
+    // the share sheet; when it cannot open (not when the visitor closed it), copy the link instead
+    if (native) native.addEventListener("click", function () {
+      var it = items[index];
+      if (!it || !it.id) return;
+      navigator.share({ title: "A photo by " + it.tag + " in Forza Horizon 1: ReImagined", url: photoLink(it.id) })
+        .catch(function (e) { if (!e || e.name !== "AbortError") copyLink(it, false); });
+    });
 
     prev.addEventListener("click", function () { go(-1); });
     next.addEventListener("click", function () { go(1); });
@@ -215,6 +274,8 @@
           e.target.classList.contains("viewer-box")) box.close();
     });
     box.addEventListener("close", function () {
+      // the address named the photo the viewer opened at: it no longer says which one is shown
+      if (/^#photo-/.test(location.hash) && history.replaceState) history.replaceState(null, "", location.pathname + location.search);
       finish();
       document.documentElement.classList.remove("viewer-open");
       var it = items[index];
@@ -234,19 +295,23 @@
       return {
         button: b, full: b.dataset.full, thumb: img ? (img.currentSrc || img.src) : "",
         ratio: w > 0 && h > 0 ? w / h : 16 / 9, alt: img ? img.alt : "",
-        title: parts[0] || "", by: parts.slice(1).join(" — ")
+        title: parts[0] || "", by: parts.slice(1).join(" — "),
+        id: PHOTO_ID.test(b.dataset.photo || "") ? b.dataset.photo : "", tag: b.dataset.tag || ""
       };
     }
 
-    document.addEventListener("click", function (e) {
-      var b = e.target.closest ? e.target.closest("button[data-full]") : null;
-      if (!b || box.contains(b)) return;
+    openAt = function (b) {
       var list = b.closest("ul, ol") || document.body;
       var all = Array.prototype.filter.call(list.querySelectorAll("button[data-full]"), function (x) { return !box.contains(x); });
       items = all.map(itemOf);
       show(Math.max(0, all.indexOf(b)));
       document.documentElement.classList.add("viewer-open");
-      box.showModal();
+      if (!box.open) box.showModal();
+    };
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("button[data-full]") : null;
+      if (!b || box.contains(b)) return;
+      openAt(b);
     });
   }
 
@@ -277,6 +342,8 @@
     b.dataset.w = size(p.w);
     b.dataset.h = size(p.h);
     b.dataset.cap = title ? title + " — " + tag : tag;
+    b.dataset.photo = p.id;
+    b.dataset.tag = tag;
     var img = el("img");
     img.src = p.thumb;
     img.width = size(p.tw);
@@ -324,8 +391,31 @@
       s.classList.toggle("error", !!failed);
     });
     if (window.FHLikes) window.FHLikes.fill(document);
+    if (!failed) opened(photos.length > 0);
     document.dispatchEvent(new Event("photos:shown"));
   }
+
+  // A link to one photo (gallery.html#photo-<id>): the photos page scrolls to it and opens it in
+  // the viewer, or says above the photos that it is not on the site right now.
+  var gallery = lists.filter(function (l) { return l.dataset.photos === "all" && !l.hasAttribute("data-photos-owner"); })[0];
+  var gone = document.querySelector("[data-photo-gone]");  // gallery.html's status line for it
+  function opened(any) {
+    var m = /^#photo-([A-Za-z2-7]{12})$/.exec(location.hash);
+    if (!gallery) return;
+    var li = m && document.getElementById("photo-" + m[1]);
+    var b = li && gallery.contains(li) ? li.querySelector("button[data-full]") : null;
+    if (gone) {
+      gone.hidden = !m || !!b;
+      gone.textContent = !m || b ? "" : "That photo isn't on the site right now: its player may have deleted it, or it was taken down." +
+        (any ? " Here are the others." : "");
+    }
+    if (!b) return;
+    li.scrollIntoView({ block: "center", behavior: "instant" });
+    if (openAt) openAt(b);
+  }
+  window.addEventListener("hashchange", function () {
+    if (gallery && gallery.getAttribute("aria-busy") === "false") opened(gallery.children.length > 0);
+  });
 
   // A page that lists the photos as soon as they are approved (data-photos-live, gallery.html)
   // merges the server's live feed into the build's (live.js); without one it shows the build's.
